@@ -1,0 +1,3 @@
+prediction_id,date,away_team,home_team,predicted_winner,predicted_probability,confidence,actual_winner,correct
+20260717-020352-baltimore-orioles-at-new-york-yankees,2026-07-17,Baltimore Orioles,New York Yankees,Baltimore Orioles,61.5,Medium,,
+20260717-022011-baltimore-orioles-at-houston-astros,2026-07-17,Baltimore Orioles,Houston Astros,Houston Astros,57.23,MEDIUM,,
