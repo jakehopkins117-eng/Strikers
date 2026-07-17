@@ -1,0 +1,27 @@
+No commits yet
+
+Changes to be committed:
+  (use "git rm --cached <file>..." to unstage)
+        new file:   api/__pycache__/mlb_api.cpython-314.pyc
+        new file:   api/mlb_api.py
+        new file:   app.py
+        new file:   services/__init__.py
+        new file:   services/__pycache__/__init__.cpython-314.pyc
+        new file:   services/__pycache__/comparison.cpython-314.pyc
+        new file:   services/__pycache__/games.cpython-314.pyc
+        new file:   services/__pycache__/players.cpython-314.pyc
+        new file:   services/__pycache__/prediction.cpython-314.pyc
+        new file:   services/__pycache__/standings.cpython-314.pyc
+        new file:   services/__pycache__/teams.cpython-314.pyc
+        new file:   services/comparison.py
+        new file:   services/games.py
+        new file:   services/players.py
+        new file:   services/prediction.py
+        new file:   services/standings.py
+        new file:   services/teams.py
+        new file:   utils/__init__.py
+        new file:   utils/__pycache__/__init__.cpython-314.pyc
+        new file:   utils/__pycache__/cache.cpython-314.pyc
+        new file:   utils/__pycache__/formatting.cpython-314.pyc
+        new file:   utils/cache.py
+        new file:   utils/formatting.py
