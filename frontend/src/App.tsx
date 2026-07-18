@@ -7,7 +7,8 @@ type Page =
   | "Best Bets"
   | "Power Rankings"
   | "Prediction History"
-  | "Team Analytics";
+  | "Team Analytics"
+  | "Player Props";
 
 type TeamOption = {
   id: number;
@@ -111,6 +112,16 @@ type TeamAnalytics = {
   recent_games: { game_pk: number; date: string; opponent: string; home: boolean; runs_for: number; runs_against: number; result: string; run_differential: number; venue: string | null }[];
 };
 
+type PlayerProp = {
+  id: string; player_id: number | null; player: string;
+  team: TeamOption; opponent: TeamOption; market: string;
+  projection: number; suggested_line: number; over_probability: number; under_probability: number;
+  recommendation: "OVER" | "UNDER" | "PASS"; confidence: string;
+  fair_over_odds: number; fair_under_odds: number; reasons: string[];
+};
+
+type PropAnalysis = { recommendation: string; over_probability: number; under_probability: number; over_edge: number; under_edge: number; fair_over_odds: number; fair_under_odds: number; expected_value: number; confidence: string; };
+
 type HistoryItem = {
   id: string;
   created_at: string;
@@ -130,12 +141,13 @@ type HistoryItem = {
   home_logo: string | null;
 };
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "http://127.0.0.1:8000";
 
 const navItems: { label: Page; icon: string }[] = [
   { label: "Dashboard", icon: "⌂" },
   { label: "Matchup Predictor", icon: "⚾" },
   { label: "Best Bets", icon: "★" },
+  { label: "Player Props", icon: "◎" },
   { label: "Power Rankings", icon: "▥" },
   { label: "Prediction History", icon: "↺" },
 ];
@@ -165,11 +177,21 @@ function formatDateTime(value: string): string {
 
 function App() {
   const [activePage, setActivePage] = useState<Page>("Dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(todayString());
   const [teams, setTeams] = useState<TeamOption[]>([]);
   const [games, setGames] = useState<Game[]>([]);
   const [bestBets, setBestBets] = useState<BestBet[]>([]);
   const [rankings, setRankings] = useState<Ranking[]>([]);
+  const [playerProps, setPlayerProps] = useState<PlayerProp[]>([]);
+  const [loadingProps, setLoadingProps] = useState(false);
+  const [propMarket, setPropMarket] = useState("All");
+  const [propSearch, setPropSearch] = useState("");
+  const [selectedProp, setSelectedProp] = useState<PlayerProp | null>(null);
+  const [propLine, setPropLine] = useState("1.5");
+  const [overOdds, setOverOdds] = useState("-110");
+  const [underOdds, setUnderOdds] = useState("-110");
+  const [propAnalysis, setPropAnalysis] = useState<PropAnalysis | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [teamAnalytics, setTeamAnalytics] = useState<TeamAnalytics | null>(null);
   const [analyticsTeamId, setAnalyticsTeamId] = useState<number | null>(null);
@@ -282,6 +304,28 @@ function App() {
     }
   }
 
+  async function loadPlayerProps(force = false) {
+    setActivePage("Player Props");
+    if (playerProps.length > 0 && !force) return;
+    setLoadingProps(true); setError("");
+    try {
+      const response = await fetch(`${API_URL}/player-props?date=${selectedDate}&limit=90`);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.detail ?? "Player props failed.");
+      setPlayerProps(payload.props as PlayerProp[]);
+    } catch (requestError) { setError(errorMessage(requestError, "Could not load player props.")); }
+    finally { setLoadingProps(false); }
+  }
+
+  async function analyzeProp() {
+    if (!selectedProp) return; setError("");
+    try {
+      const response = await fetch(`${API_URL}/analyze-prop`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({player:selectedProp.player,market:selectedProp.market,projection:selectedProp.projection,line:Number(propLine),over_odds:Number(overOdds),under_odds:Number(underOdds)})});
+      const payload=await response.json(); if(!response.ok) throw new Error(payload.detail ?? "Analysis failed.");
+      setPropAnalysis(payload as PropAnalysis);
+    } catch(requestError){setError(errorMessage(requestError,"Could not analyze prop."));}
+  }
+
   async function loadRankings(force = false) {
     setActivePage("Power Rankings");
     if (rankings.length > 0 && !force) return;
@@ -353,7 +397,9 @@ function App() {
   }
 
   function navigate(page: Page) {
+    setSidebarOpen(false);
     if (page === "Best Bets") void loadBestBets();
+    else if (page === "Player Props") void loadPlayerProps();
     else if (page === "Power Rankings") void loadRankings();
     else if (page === "Prediction History") void loadHistory();
     else setActivePage(page);
@@ -361,10 +407,12 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      {sidebarOpen && <button className="sidebar-backdrop" aria-label="Close navigation" type="button" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="brand">
           <div className="brand-mark">S</div>
           <div><h1>STRIKERS</h1><p>MLB Analytics</p></div>
+          <button className="sidebar-close" aria-label="Close navigation" type="button" onClick={() => setSidebarOpen(false)}>×</button>
         </div>
 
         <nav className="nav-list">
@@ -391,18 +439,19 @@ function App() {
 
       <main className="main-content">
         <header className="topbar">
-          <div><p className="eyebrow">STRIKERS COMMAND CENTER</p><h2>{activePage}</h2></div>
+          <div className="topbar-title"><button className="menu-button" aria-label="Open navigation" type="button" onClick={() => setSidebarOpen(true)}>☰</button><div><p className="eyebrow">STRIKERS COMMAND CENTER</p><h2>{activePage}</h2></div></div>
           <div className="topbar-actions">
-            <span className="season-badge">Sprint 5</span>
+            <span className="season-badge">Sprint 6</span>
             <div className={`api-indicator ${backendOnline ? "online" : ""}`}><span />API</div>
             <button className="profile-button" type="button">JH</button>
           </div>
         </header>
 
-        {error && <div className="error-banner">{error}</div>}
+        {error && <div className="error-banner"><span>{error}</span><button type="button" aria-label="Dismiss error" onClick={() => setError("")}>×</button></div>}
         {activePage === "Dashboard" && renderDashboard()}
         {activePage === "Matchup Predictor" && renderPredictor()}
         {activePage === "Best Bets" && renderBestBets()}
+        {activePage === "Player Props" && renderPlayerProps()}
         {activePage === "Power Rankings" && renderRankings()}
         {activePage === "Prediction History" && renderHistory()}
         {activePage === "Team Analytics" && renderTeamAnalytics()}
@@ -530,6 +579,22 @@ function App() {
          </section>}
       </>
     );
+  }
+
+  function renderPlayerProps() {
+    const markets=["All",...Array.from(new Set(playerProps.map((prop)=>prop.market)))];
+    const filtered=playerProps.filter((prop)=>(propMarket==="All"||prop.market===propMarket)&&prop.player.toLowerCase().includes(propSearch.toLowerCase()));
+    return <>
+      <section className="section-heading bets-heading"><div><p className="eyebrow">SPRINT 6 · PLAYER PROJECTIONS</p><h3>Player Props Lab</h3><p>Model-generated reference lines using current MLB season rates. Enter sportsbook odds to evaluate value.</p></div><button className="secondary-button" type="button" onClick={()=>void loadPlayerProps(true)}>Refresh slate</button></section>
+      <section className="prop-toolbar panel"><input placeholder="Search player…" value={propSearch} onChange={(e)=>setPropSearch(e.target.value)}/><select value={propMarket} onChange={(e)=>setPropMarket(e.target.value)}>{markets.map((m)=><option key={m}>{m}</option>)}</select><span>{filtered.length} projections · {selectedDate}</span></section>
+      {loadingProps?<LoadingCard text="Building player projections…"/>:filtered.length===0?<EmptyState title="No player props available" text="Probable pitchers, active rosters, or season stats may not be posted for this slate yet."/>:<section className="prop-grid">{filtered.map((prop)=><article className="prop-card panel" key={prop.id}>
+        <div className="prop-card-head"><div className="prop-player"><div className="team-logo-wrap">{prop.team.logo?<img src={prop.team.logo} className="team-logo" alt=""/>:prop.team.name.slice(0,2)}</div><div><h3>{prop.player}</h3><span>{prop.team.name} vs {prop.opponent.name}</span></div></div><span className={`prop-badge ${prop.recommendation.toLowerCase()}`}>{prop.recommendation}</span></div>
+        <div className="prop-market">{prop.market}</div><div className="prop-numbers"><div><span>Projection</span><strong>{prop.projection}</strong></div><div><span>Reference line</span><strong>{prop.suggested_line}</strong></div><div><span>Over chance</span><strong>{prop.over_probability}%</strong></div></div>
+        <div className="prop-meter"><span style={{width:`${prop.over_probability}%`}}/></div><div className="prop-meta"><span>{prop.confidence}</span><span>Fair O {prop.fair_over_odds>0?"+":""}{prop.fair_over_odds}</span></div>
+        <ul>{prop.reasons.map((r)=><li key={r}>{r}</li>)}</ul><button className="primary-button full-width" type="button" onClick={()=>{setSelectedProp(prop);setPropLine(String(prop.suggested_line));setPropAnalysis(null);}}>Analyze sportsbook line</button>
+      </article>)}</section>}
+      {selectedProp&&<div className="prop-modal-backdrop" onClick={()=>setSelectedProp(null)}><section className="prop-modal panel" onClick={(e)=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelectedProp(null)}>×</button><p className="eyebrow">PROP VALUE ANALYZER</p><h3>{selectedProp.player} · {selectedProp.market}</h3><p>Model projection: <strong>{selectedProp.projection}</strong></p><div className="prop-form"><label>Sportsbook line<input type="number" step="0.5" value={propLine} onChange={(e)=>setPropLine(e.target.value)}/></label><label>Over odds<input type="number" value={overOdds} onChange={(e)=>setOverOdds(e.target.value)}/></label><label>Under odds<input type="number" value={underOdds} onChange={(e)=>setUnderOdds(e.target.value)}/></label></div><button className="primary-button full-width" onClick={()=>void analyzeProp()}>Calculate value</button>{propAnalysis&&<div className="analysis-result"><span>Recommendation</span><h3>{propAnalysis.recommendation}</h3><div className="prop-numbers"><div><span>Over</span><strong>{propAnalysis.over_probability}%</strong></div><div><span>Under</span><strong>{propAnalysis.under_probability}%</strong></div><div><span>EV</span><strong>{propAnalysis.expected_value>0?"+":""}{propAnalysis.expected_value}%</strong></div></div><p>Edges: Over {propAnalysis.over_edge}% · Under {propAnalysis.under_edge}% · {propAnalysis.confidence}</p></div>}<small className="prop-warning">Informational model output only. Lines shown by default are estimates, not live sportsbook offers.</small></section></div>}
+    </>;
   }
 
   function renderRankings() {

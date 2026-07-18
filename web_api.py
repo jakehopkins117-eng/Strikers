@@ -1,4 +1,4 @@
-"""Strikers FastAPI web bridge — Sprint 5.
+"""Strikers FastAPI web bridge — Sprint 6.
 
 Features:
 - Live MLB schedule
@@ -32,7 +32,7 @@ from services.prediction import PredictionEngine
 
 app = FastAPI(
     title="Strikers API",
-    version="5.0.0",
+    version="6.0.0",
     description="Web API for the Strikers MLB prediction platform.",
 )
 
@@ -55,6 +55,15 @@ HISTORY_LOCK = Lock()
 class PredictionRequest(BaseModel):
     away_team: str = Field(min_length=2, max_length=80)
     home_team: str = Field(min_length=2, max_length=80)
+
+
+class PropAnalysisRequest(BaseModel):
+    player: str = Field(min_length=2, max_length=100)
+    market: str = Field(min_length=2, max_length=80)
+    projection: float = Field(ge=0)
+    line: float = Field(ge=0)
+    over_odds: int = Field(default=-110, ge=-10000, le=10000)
+    under_odds: int = Field(default=-110, ge=-10000, le=10000)
 
 
 def _get_json(url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -485,6 +494,173 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+
+def _american_to_decimal(odds: int) -> float:
+    if odds == 0:
+        return 2.0
+    return 1 + (100 / abs(odds) if odds < 0 else odds / 100)
+
+
+def _american_implied(odds: int) -> float:
+    if odds == 0:
+        return 0.5
+    return abs(odds) / (abs(odds) + 100) if odds < 0 else 100 / (odds + 100)
+
+
+def _fair_american(probability: float) -> int:
+    probability = max(0.01, min(0.99, probability))
+    return round(-100 * probability / (1 - probability)) if probability >= 0.5 else round(100 * (1 - probability) / probability)
+
+
+def _normal_over_probability(projection: float, line: float, scale: float) -> float:
+    # Smooth, transparent approximation suitable for a first projection model.
+    import math
+    z = (projection - line) / max(scale, 0.25)
+    return max(0.05, min(0.95, 1 / (1 + math.exp(-1.7 * z))))
+
+
+def _season_value(stats: dict[str, Any], key: str, default: float = 0.0) -> float:
+    try:
+        return float(stats.get(key, default) or default)
+    except (TypeError, ValueError):
+        return default
+
+
+def _team_roster_stats(team_id: int, season: int) -> list[dict[str, Any]]:
+    payload = _get_json(
+        f"{MLB_STATS_API}/teams/{team_id}/roster",
+        params={
+            "rosterType": "active",
+            "hydrate": f"person(stats(group=[hitting,pitching],type=[season],season={season}))",
+        },
+    )
+    players: list[dict[str, Any]] = []
+    for entry in payload.get("roster", []):
+        person = entry.get("person", {})
+        groups: dict[str, dict[str, Any]] = {}
+        for block in person.get("stats", []):
+            group = block.get("group", {}).get("displayName", "")
+            splits = block.get("splits", [])
+            if splits:
+                groups[group] = splits[0].get("stat", {})
+        players.append({
+            "id": person.get("id"),
+            "name": person.get("fullName", "Unknown Player"),
+            "position": entry.get("position", {}).get("abbreviation", ""),
+            "hitting": groups.get("hitting", {}),
+            "pitching": groups.get("pitching", {}),
+        })
+    return players
+
+
+def _confidence_label(probability: float) -> str:
+    edge = abs(probability - 0.5)
+    if edge >= .20: return "Strong"
+    if edge >= .13: return "Playable"
+    if edge >= .07: return "Lean"
+    return "Pass"
+
+
+def _prop_card(player: str, player_id: int | None, team: dict[str, Any], opponent: dict[str, Any], market: str, projection: float, default_line: float, scale: float, reasons: list[str]) -> dict[str, Any]:
+    over_probability = _normal_over_probability(projection, default_line, scale)
+    recommendation = "OVER" if over_probability >= .56 else "UNDER" if over_probability <= .44 else "PASS"
+    probability = over_probability if recommendation != "UNDER" else 1-over_probability
+    return {
+        "id": f"{player_id or player}-{market}".replace(" ", "-").lower(),
+        "player_id": player_id,
+        "player": player,
+        "team": team,
+        "opponent": opponent,
+        "market": market,
+        "projection": round(projection, 2),
+        "suggested_line": default_line,
+        "over_probability": round(over_probability * 100, 1),
+        "under_probability": round((1-over_probability) * 100, 1),
+        "recommendation": recommendation,
+        "confidence": _confidence_label(probability),
+        "fair_over_odds": _fair_american(over_probability),
+        "fair_under_odds": _fair_american(1-over_probability),
+        "reasons": reasons[:4],
+    }
+
+
+def _build_daily_props(target_date: str, limit: int) -> list[dict[str, Any]]:
+    schedule = _get_json(
+        f"{MLB_STATS_API}/schedule",
+        params={"sportId": 1, "date": target_date, "hydrate": "probablePitcher"},
+    )
+    games = [g for d in schedule.get("dates", []) for g in d.get("games", [])]
+    season = int(target_date[:4])
+    props: list[dict[str, Any]] = []
+    roster_cache: dict[int, list[dict[str, Any]]] = {}
+
+    for game in games:
+        sides = game.get("teams", {})
+        for side, other in (("away", "home"), ("home", "away")):
+            team = sides.get(side, {}).get("team", {})
+            opponent = sides.get(other, {}).get("team", {})
+            team_id = team.get("id")
+            if not team_id:
+                continue
+            if team_id not in roster_cache:
+                roster_cache[team_id] = _team_roster_stats(team_id, season)
+            players = roster_cache[team_id]
+
+            probable = sides.get(side, {}).get("probablePitcher", {})
+            probable_id = probable.get("id")
+            pitcher = next((p for p in players if p["id"] == probable_id), None)
+            if pitcher and pitcher["pitching"]:
+                st = pitcher["pitching"]
+                games_started = max(_season_value(st, "gamesStarted", 1), 1)
+                innings = _season_value(st, "inningsPitched")
+                strikeouts = _season_value(st, "strikeOuts")
+                walks = _season_value(st, "baseOnBalls")
+                earned = _season_value(st, "earnedRuns")
+                hits = _season_value(st, "hits")
+                k_proj = strikeouts / games_started if games_started else 0
+                outs_proj = (innings * 3) / games_started if games_started else 15
+                er_proj = earned / games_started if games_started else 2.5
+                hit_proj = hits / games_started if games_started else 5.5
+                bb_proj = walks / games_started if games_started else 2.0
+                team_payload={"id":team_id,"name":team.get("name"),"logo":_logo_url(team_id)}
+                opp_payload={"id":opponent.get("id"),"name":opponent.get("name"),"logo":_logo_url(opponent.get("id"))}
+                pitcher_name=pitcher["name"]
+                props.extend([
+                    _prop_card(pitcher_name, probable_id, team_payload, opp_payload, "Pitcher Strikeouts", k_proj, round(k_proj*2)/2, 1.6, [f"Season rate: {k_proj:.1f} strikeouts per start", f"{innings:.1f} innings across {int(games_started)} starts", "Confirm pitch count and lineup before first pitch"]),
+                    _prop_card(pitcher_name, probable_id, team_payload, opp_payload, "Pitcher Outs", outs_proj, round(outs_proj*2)/2, 2.5, [f"Season workload projects to {outs_proj:.1f} outs", f"Walk rate: {bb_proj:.1f} per start", "Bullpen usage can affect leash"]),
+                    _prop_card(pitcher_name, probable_id, team_payload, opp_payload, "Earned Runs", er_proj, round(er_proj*2)/2, 1.0, [f"Season rate: {er_proj:.2f} earned runs per start", f"Hits allowed: {hit_proj:.1f} per start", "Defense and park conditions add volatility"]),
+                ])
+
+            hitters=[]
+            for p in players:
+                st=p["hitting"]
+                pa=_season_value(st,"plateAppearances")
+                games_played=_season_value(st,"gamesPlayed")
+                if games_played < 5 or pa < 15: continue
+                ops=_season_value(st,"ops")
+                hitters.append((ops, games_played, p, st))
+            hitters.sort(reverse=True, key=lambda x:x[0])
+            for _, gp, hitter, st in hitters[:3]:
+                hits=_season_value(st,"hits")/gp
+                tb=_season_value(st,"totalBases")/gp
+                hr=_season_value(st,"homeRuns")/gp
+                rbi=_season_value(st,"rbi")/gp
+                avg=st.get("avg",".000"); ops=st.get("ops",".000")
+                tp={"id":team_id,"name":team.get("name"),"logo":_logo_url(team_id)}
+                op={"id":opponent.get("id"),"name":opponent.get("name"),"logo":_logo_url(opponent.get("id"))}
+                name=hitter["name"]; pid=hitter["id"]
+                props.extend([
+                    _prop_card(name,pid,tp,op,"Hits",hits,1.5 if hits>=1.15 else .5,.55,[f"Season average: {hits:.2f} hits/game",f"Batting average: {avg}",f"OPS: {ops}"]),
+                    _prop_card(name,pid,tp,op,"Total Bases",tb,1.5,.85,[f"Season average: {tb:.2f} total bases/game",f"OPS: {ops}","Extra-base hits create upside"]),
+                    _prop_card(name,pid,tp,op,"Home Runs",hr,.5,.28,[f"Season rate: {hr:.2f} home runs/game",f"OPS: {ops}","Home-run props are high variance"]),
+                    _prop_card(name,pid,tp,op,"RBIs",rbi,.5,.55,[f"Season average: {rbi:.2f} RBI/game",f"OPS: {ops}","Lineup position drives opportunity"]),
+                ])
+
+    rank={"Strong":0,"Playable":1,"Lean":2,"Pass":3}
+    props.sort(key=lambda p:(rank[p["confidence"]], -abs(p["over_probability"]-50)))
+    return props[:limit]
+
+
 @app.get("/")
 def root() -> dict[str, str]:
     return {
@@ -845,6 +1021,45 @@ def team_analytics(
             "run_differential": game["run_differential"],
         } for game in recent[-15:]],
         "recent_games": list(reversed(recent[-10:])),
+    }
+
+
+
+@app.get("/player-props")
+def player_props(
+    date: str | None = Query(default=None),
+    limit: int = Query(default=60, ge=1, le=150),
+) -> dict[str, Any]:
+    target_date = date or date_type.today().isoformat()
+    try:
+        datetime.strptime(target_date, "%Y-%m-%d")
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail="Date must use YYYY-MM-DD.") from error
+    props = _build_daily_props(target_date, limit)
+    return {"date": target_date, "count": len(props), "props": props, "methodology": "Season per-game rates with a transparent probability curve. Lines are suggested reference points, not live sportsbook odds."}
+
+
+@app.post("/analyze-prop")
+def analyze_prop(request: PropAnalysisRequest) -> dict[str, Any]:
+    scale = 1.5 if "Strikeout" in request.market else .8 if request.market in {"Hits", "Total Bases"} else .6
+    over_probability = _normal_over_probability(request.projection, request.line, scale)
+    under_probability = 1-over_probability
+    over_implied = _american_implied(request.over_odds)
+    under_implied = _american_implied(request.under_odds)
+    over_edge = over_probability-over_implied
+    under_edge = under_probability-under_implied
+    side = "OVER" if over_edge > under_edge else "UNDER"
+    probability = over_probability if side == "OVER" else under_probability
+    odds = request.over_odds if side == "OVER" else request.under_odds
+    decimal_odds = _american_to_decimal(odds)
+    ev = probability * (decimal_odds-1) - (1-probability)
+    return {
+        "player": request.player, "market": request.market, "line": request.line,
+        "projection": request.projection, "recommendation": side if max(over_edge,under_edge)>=.02 else "PASS",
+        "over_probability": round(over_probability*100,1), "under_probability": round(under_probability*100,1),
+        "over_edge": round(over_edge*100,1), "under_edge": round(under_edge*100,1),
+        "fair_over_odds": _fair_american(over_probability), "fair_under_odds": _fair_american(under_probability),
+        "expected_value": round(ev*100,1), "confidence": _confidence_label(probability),
     }
 
 
