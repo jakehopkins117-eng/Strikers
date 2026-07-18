@@ -8,7 +8,9 @@ type Page =
   | "Power Rankings"
   | "Prediction History"
   | "Team Analytics"
-  | "Player Props";
+  | "Player Props"
+  | "Model Performance"
+  | "Weather Center";
 
 type TeamOption = {
   id: number;
@@ -122,6 +124,10 @@ type PlayerProp = {
 
 type PropAnalysis = { recommendation: string; over_probability: number; under_probability: number; over_edge: number; under_edge: number; fair_over_odds: number; fair_under_odds: number; expected_value: number; confidence: string; };
 
+type Performance = { summary: { total_predictions:number; graded_predictions:number; pending_predictions:number; wins:number; losses:number; accuracy:number; units:number; roi:number; current_streak:number; streak_type:string|null }; confidence_tiers:{tier:string;predictions:number;wins:number;accuracy:number}[]; trend:{date:string;accuracy:number;predictions:number;cumulative_units:number}[]; team_performance:{team:string;predictions:number;wins:number;accuracy:number}[]; calibration:{bucket:string;predictions:number;expected:number;actual:number}[]; recent:HistoryItem[]; };
+
+type WeatherGame = Game & { weather: { indoor:boolean; available:boolean; temperature_f?:number; precipitation_probability?:number; wind_mph?:number; gust_mph?:number; impact:string; impact_score:number; summary:string } };
+
 type HistoryItem = {
   id: string;
   created_at: string;
@@ -139,6 +145,8 @@ type HistoryItem = {
   reasons: string[];
   away_logo: string | null;
   home_logo: string | null;
+  result?: "win" | "loss";
+  actual?: { winner:string; away_score:number; home_score:number };
 };
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "http://127.0.0.1:8000";
@@ -149,6 +157,8 @@ const navItems: { label: Page; icon: string }[] = [
   { label: "Best Bets", icon: "★" },
   { label: "Player Props", icon: "◎" },
   { label: "Power Rankings", icon: "▥" },
+  { label: "Model Performance", icon: "↗" },
+  { label: "Weather Center", icon: "☁" },
   { label: "Prediction History", icon: "↺" },
 ];
 
@@ -193,6 +203,10 @@ function App() {
   const [underOdds, setUnderOdds] = useState("-110");
   const [propAnalysis, setPropAnalysis] = useState<PropAnalysis | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [performance, setPerformance] = useState<Performance | null>(null);
+  const [weatherGames, setWeatherGames] = useState<WeatherGame[]>([]);
+  const [loadingPerformance, setLoadingPerformance] = useState(false);
+  const [loadingWeather, setLoadingWeather] = useState(false);
   const [teamAnalytics, setTeamAnalytics] = useState<TeamAnalytics | null>(null);
   const [analyticsTeamId, setAnalyticsTeamId] = useState<number | null>(null);
   const [awayTeam, setAwayTeam] = useState("");
@@ -344,6 +358,22 @@ function App() {
     }
   }
 
+  async function loadPerformance(force = false) {
+    setActivePage("Model Performance");
+    if (performance && !force) return;
+    setLoadingPerformance(true); setError("");
+    try { const response = await fetch(`${API_URL}/model-performance?refresh=true`); const payload = await response.json(); if(!response.ok) throw new Error(payload.detail ?? "Performance failed."); setPerformance(payload as Performance); }
+    catch(requestError){ setError(errorMessage(requestError,"Could not load model performance.")); } finally { setLoadingPerformance(false); }
+  }
+
+  async function loadWeather(force = false) {
+    setActivePage("Weather Center");
+    if (weatherGames.length && !force) return;
+    setLoadingWeather(true); setError("");
+    try { const response = await fetch(`${API_URL}/weather?date=${selectedDate}`); const payload = await response.json(); if(!response.ok) throw new Error(payload.detail ?? "Weather failed."); setWeatherGames(payload.games as WeatherGame[]); }
+    catch(requestError){ setError(errorMessage(requestError,"Could not load weather intelligence.")); } finally { setLoadingWeather(false); }
+  }
+
   async function loadHistory(force = false) {
     setActivePage("Prediction History");
     if (history.length > 0 && !force) return;
@@ -401,6 +431,8 @@ function App() {
     if (page === "Best Bets") void loadBestBets();
     else if (page === "Player Props") void loadPlayerProps();
     else if (page === "Power Rankings") void loadRankings();
+    else if (page === "Model Performance") void loadPerformance();
+    else if (page === "Weather Center") void loadWeather();
     else if (page === "Prediction History") void loadHistory();
     else setActivePage(page);
   }
@@ -441,7 +473,7 @@ function App() {
         <header className="topbar">
           <div className="topbar-title"><button className="menu-button" aria-label="Open navigation" type="button" onClick={() => setSidebarOpen(true)}>☰</button><div><p className="eyebrow">STRIKERS COMMAND CENTER</p><h2>{activePage}</h2></div></div>
           <div className="topbar-actions">
-            <span className="season-badge">Sprint 6</span>
+            <span className="season-badge">Sprint 8–9</span>
             <div className={`api-indicator ${backendOnline ? "online" : ""}`}><span />API</div>
             <button className="profile-button" type="button">JH</button>
           </div>
@@ -453,6 +485,8 @@ function App() {
         {activePage === "Best Bets" && renderBestBets()}
         {activePage === "Player Props" && renderPlayerProps()}
         {activePage === "Power Rankings" && renderRankings()}
+        {activePage === "Model Performance" && renderPerformance()}
+        {activePage === "Weather Center" && renderWeather()}
         {activePage === "Prediction History" && renderHistory()}
         {activePage === "Team Analytics" && renderTeamAnalytics()}
       </main>
@@ -706,6 +740,24 @@ function App() {
         </section>
       </>
     );
+  }
+
+  function renderPerformance() {
+    const summary = performance?.summary;
+    return <>
+      <section className="section-heading bets-heading"><div><p className="eyebrow">MODEL ACCOUNTABILITY</p><h3>Model Performance</h3><p>Automatic result grading, confidence calibration, and flat-stake ROI.</p></div><button className="secondary-button" type="button" onClick={() => void loadPerformance(true)}>Grade & Refresh</button></section>
+      {loadingPerformance ? <LoadingCard text="Grading predictions and calculating performance…" /> : !performance ? <EmptyState title="No performance data yet" text="Run predictions, then return after games become final." /> : <>
+        <section className="stats-grid"><StatCard label="Accuracy" value={`${summary?.accuracy.toFixed(1)}%`} note={`${summary?.wins}-${summary?.losses} graded record`} positive={(summary?.accuracy ?? 0)>=55}/><StatCard label="Units" value={`${(summary?.units ?? 0)>=0?'+':''}${summary?.units.toFixed(2)}`} note="1 unit per pick at -110" positive={(summary?.units ?? 0)>=0}/><StatCard label="ROI" value={`${(summary?.roi ?? 0)>=0?'+':''}${summary?.roi.toFixed(1)}%`} note={`${summary?.graded_predictions} graded · ${summary?.pending_predictions} pending`} positive={(summary?.roi ?? 0)>=0}/><StatCard label="Current streak" value={`${summary?.current_streak ?? 0} ${(summary?.streak_type ?? '').toUpperCase()}`} note="Most recent graded picks" positive={summary?.streak_type==='win'}/></section>
+        <section className="analytics-grid"><article className="panel"><p className="eyebrow">CONFIDENCE TIERS</p><h3>Accuracy by model confidence</h3><div className="metric-bars">{performance.confidence_tiers.map(row=><div className="metric-bar" key={row.tier}><div><strong>{row.tier}</strong><span>{row.wins}/{row.predictions} · {row.accuracy.toFixed(1)}%</span></div><div className="probability-track"><div className="probability-fill" style={{width:`${row.accuracy}%`}}/></div></div>)}</div></article>
+        <article className="panel"><p className="eyebrow">CALIBRATION</p><h3>Expected vs. actual win rate</h3><div className="calibration-list">{performance.calibration.length ? performance.calibration.map(row=><div className="calibration-row" key={row.bucket}><strong>{row.bucket}</strong><span>Expected {row.expected.toFixed(1)}%</span><span>Actual {row.actual.toFixed(1)}%</span></div>) : <p className="muted">More graded predictions are needed.</p>}</div></article></section>
+        <section className="panel"><p className="eyebrow">PERFORMANCE TREND</p><h3>Cumulative units by day</h3><div className="trend-list">{performance.trend.length ? performance.trend.map(row=><div className="trend-row" key={row.date}><span>{row.date}</span><strong className={row.cumulative_units>=0?'positive':'negative'}>{row.cumulative_units>=0?'+':''}{row.cumulative_units.toFixed(2)}u</strong><small>{row.accuracy.toFixed(0)}% on {row.predictions} picks</small></div>) : <p className="muted">Trend data appears after completed games are graded.</p>}</div></section>
+      </>}
+    </>;
+  }
+
+  function renderWeather() {
+    return <><section className="section-heading bets-heading"><div><p className="eyebrow">LIVE SLATE CONDITIONS</p><h3>Weather Center</h3><p>Temperature, wind, precipitation risk, and run-environment context.</p></div><button className="secondary-button" type="button" onClick={() => void loadWeather(true)}>Refresh Forecasts</button></section>
+    {loadingWeather ? <LoadingCard text="Loading ballpark forecasts…"/> : weatherGames.length===0 ? <EmptyState title="No weather games found" text="Choose a date with scheduled MLB games."/> : <section className="weather-grid">{weatherGames.map(game=><article className="panel weather-card" key={game.game_pk}><div className="weather-top"><div><span>{game.away.name} at {game.home.name}</span><h3>{game.venue ?? 'Venue TBD'}</h3></div><span className={`weather-impact impact-${game.weather.impact.toLowerCase().replace(' ','-')}`}>{game.weather.impact}</span></div>{game.weather.indoor ? <div className="indoor-weather">⌂ Climate controlled</div> : game.weather.available ? <div className="weather-metrics"><div><span>Temperature</span><strong>{game.weather.temperature_f}°F</strong></div><div><span>Wind</span><strong>{game.weather.wind_mph} mph</strong></div><div><span>Rain</span><strong>{game.weather.precipitation_probability}%</strong></div><div><span>Gusts</span><strong>{game.weather.gust_mph} mph</strong></div></div> : <p>Forecast unavailable.</p>}<p className="weather-summary">{game.weather.summary}</p><button className="secondary-button full-width" type="button" onClick={()=>void runPrediction(game.away.name,game.home.name)}>Analyze Matchup</button></article>)}</section>}</>;
   }
 
   function renderHistory() {

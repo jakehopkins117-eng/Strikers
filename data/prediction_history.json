@@ -1,5 +1,53 @@
 [
   {
+    "id": "7114f8ca-04c6-412c-aad1-012fcf043e75",
+    "created_at": "2026-07-18T07:28:04.181672+00:00",
+    "away_team": "Baltimore Orioles",
+    "home_team": "Houston Astros",
+    "winner": "Baltimore Orioles",
+    "away_probability": 52.9657302025588,
+    "home_probability": 47.0342697974412,
+    "confidence": "LOW",
+    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "projected_score": {
+      "away": 53.48909435595152,
+      "home": 46.51090564404848
+    },
+    "reasons": [
+      "Team ERA",
+      "Team WHIP",
+      "Recent record",
+      "Recent run differential",
+      "Starter walk rate"
+    ],
+    "away_logo": "https://www.mlbstatic.com/team-logos/110.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/117.svg"
+  },
+  {
+    "id": "231bd984-f78e-4a60-a537-24329fa39b45",
+    "created_at": "2026-07-18T07:27:59.855523+00:00",
+    "away_team": "Baltimore Orioles",
+    "home_team": "Houston Astros",
+    "winner": "Baltimore Orioles",
+    "away_probability": 52.9657302025588,
+    "home_probability": 47.0342697974412,
+    "confidence": "LOW",
+    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "projected_score": {
+      "away": 53.48909435595152,
+      "home": 46.51090564404848
+    },
+    "reasons": [
+      "Team ERA",
+      "Team WHIP",
+      "Recent record",
+      "Recent run differential",
+      "Starter walk rate"
+    ],
+    "away_logo": "https://www.mlbstatic.com/team-logos/110.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/117.svg"
+  },
+  {
     "id": "ae6e1684-1848-49a8-9712-a6a8b1cb03d8",
     "created_at": "2026-07-18T06:23:58.665828+00:00",
     "away_team": "Pittsburgh Pirates",

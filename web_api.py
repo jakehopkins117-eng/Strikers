@@ -28,11 +28,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from services.prediction import PredictionEngine
+from services.performance import build_performance, grade_predictions
+from services.weather import weather_for_game
 
 
 app = FastAPI(
     title="Strikers API",
-    version="6.0.0",
+    version="8.9.0",
     description="Web API for the Strikers MLB prediction platform.",
 )
 
@@ -1062,6 +1064,31 @@ def analyze_prop(request: PropAnalysisRequest) -> dict[str, Any]:
         "expected_value": round(ev*100,1), "confidence": _confidence_label(probability),
     }
 
+
+
+@app.post("/grade-predictions")
+def grade_saved_predictions() -> dict[str, Any]:
+    history = _read_history()
+    graded, changed = grade_predictions(history, schedule)
+    if changed:
+        _write_history(graded)
+    return {"graded": changed, "performance": build_performance(graded)}
+
+
+@app.get("/model-performance")
+def model_performance(refresh: bool = Query(default=True)) -> dict[str, Any]:
+    history = _read_history()
+    if refresh:
+        history, changed = grade_predictions(history, schedule)
+        if changed:
+            _write_history(history)
+    return build_performance(history)
+
+
+@app.get("/weather")
+def weather_center(game_date: str = Query(default_factory=lambda: date_type.today().isoformat(), alias="date")) -> dict[str, Any]:
+    slate = schedule(game_date)
+    return {"date": game_date, "games": [{**game, "weather": weather_for_game(game)} for game in slate["games"]]}
 
 @app.get("/prediction-history")
 def prediction_history(
