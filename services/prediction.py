@@ -1,5 +1,5 @@
 ﻿"""
-Strikers Prediction Engine 3.0
+Strikers Prediction Engine 4.0
 
 This module provides an object-oriented MLB matchup prediction engine.
 It combines team performance, offense, pitching, home/away records,
@@ -12,9 +12,8 @@ older versions of app.py.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from math import tanh
 from typing import Any
-
-from utils.prediction_tracker import save_prediction
 
 from api.mlb_api import (
     find_team,
@@ -22,6 +21,7 @@ from api.mlb_api import (
     get_team_hitting_stats,
     get_team_pitching_stats,
     get_team_record,
+    get_team_recent_form,
     get_today_schedule,
 )
 
@@ -130,6 +130,13 @@ class TeamData:
     runs_per_game: float
     era: float
     whip: float
+    recent_games: int
+    recent_wins: int
+    recent_losses: int
+    recent_win_pct: float
+    recent_runs_per_game: float
+    recent_runs_allowed_per_game: float
+    recent_run_differential_per_game: float
 
 
 @dataclass
@@ -165,9 +172,11 @@ class ModelResult:
 class PredictionEngine:
     """Create and display a pitcher-aware MLB matchup prediction."""
 
-    TEAM_WEIGHT = 65.0
-    PITCHER_WEIGHT = 30.0
+    TEAM_WEIGHT = 70.0
+    PITCHER_WEIGHT = 25.0
     HOME_FIELD_POINTS = 5.0
+    MAX_PROBABILITY = 80.0
+    PROBABILITY_SHRINK = 0.85
 
     def __init__(self) -> None:
         self.away_team: dict[str, Any] | None = None
@@ -200,19 +209,62 @@ class PredictionEngine:
             self.load_probable_pitchers()
             result = self.generate_prediction()
             self.display_report(result)
-            self.save_prediction_to_history(result)
 
         except (ConnectionError, RuntimeError) as error:
             print(f"\nPrediction could not be completed: {error}")
         except Exception as error:
             print(f"\nUnexpected prediction error: {error}")
 
+    def predict_silent(
+        self,
+        away_search: str,
+        home_search: str,
+    ) -> ModelResult:
+        """
+        Generate a prediction without prompts, reports, or history saving.
+
+        This mode is used by automated features such as Best Bets of
+        the Day.
+        """
+
+        away_search = away_search.strip()
+        home_search = home_search.strip()
+
+        if not away_search or not home_search:
+            raise ValueError("Both team names are required.")
+
+        self.away_team = None
+        self.home_team = None
+        self.away_data = None
+        self.home_data = None
+        self.away_pitcher = PitcherData()
+        self.home_pitcher = PitcherData()
+        self.factor_edges = []
+
+        self.away_team = find_team(away_search)
+        self.home_team = find_team(home_search)
+
+        if not self.away_team:
+            raise ValueError(f"Away team not found: {away_search}")
+
+        if not self.home_team:
+            raise ValueError(f"Home team not found: {home_search}")
+
+        if self.away_team.get("id") == self.home_team.get("id"):
+            raise ValueError(
+                "The matchup must contain two different teams."
+            )
+
+        self.load_team_data()
+        self.load_probable_pitchers()
+
+        return self.generate_prediction()
     @staticmethod
     def print_header() -> None:
         """Display the Prediction Engine heading."""
 
         print("\n" + "=" * 62)
-        print("STRIKERS PREDICTION ENGINE 3.0".center(62))
+        print("STRIKERS PREDICTION ENGINE 4.0".center(62))
         print("=" * 62)
 
     def load_matchup(self, away_search: str, home_search: str) -> bool:
@@ -255,6 +307,7 @@ class PredictionEngine:
         record = get_team_record(team_id) or {}
         hitting = get_team_hitting_stats(team_id) or {}
         pitching = get_team_pitching_stats(team_id) or {}
+        recent_form = get_team_recent_form(team_id, games=10) or {}
 
         location_record = record.get("records", {}).get("splitRecords", [])
         location_win_pct = self.find_location_percentage(
@@ -274,6 +327,13 @@ class PredictionEngine:
             runs_per_game=runs_per_game(hitting),
             era=safe_float(pitching.get("era")),
             whip=safe_float(pitching.get("whip")),
+            recent_games=safe_int(recent_form.get("games_played")),
+            recent_wins=safe_int(recent_form.get("wins")),
+            recent_losses=safe_int(recent_form.get("losses")),
+            recent_win_pct=safe_float(recent_form.get("win_pct"), 0.5),
+            recent_runs_per_game=safe_float(recent_form.get("runs_per_game")),
+            recent_runs_allowed_per_game=safe_float(recent_form.get("runs_allowed_per_game")),
+            recent_run_differential_per_game=safe_float(recent_form.get("run_differential_per_game")),
         )
 
     @staticmethod
@@ -369,7 +429,7 @@ class PredictionEngine:
         )
 
     def generate_prediction(self) -> ModelResult:
-        """Score the matchup and produce win probabilities."""
+        """Score the matchup and produce calibrated win probabilities."""
 
         assert self.away_data is not None
         assert self.home_data is not None
@@ -379,81 +439,43 @@ class PredictionEngine:
         self.factor_edges = []
 
         team_factors = [
-            (
-                "Season record",
-                self.away_data.win_pct,
-                self.home_data.win_pct,
-                14.0,
-                True,
-            ),
-            (
-                "Home/away performance",
-                self.away_data.location_win_pct,
-                self.home_data.location_win_pct,
-                8.0,
-                True,
-            ),
-            (
-                "OPS",
-                self.away_data.ops,
-                self.home_data.ops,
-                16.0,
-                True,
-            ),
-            (
-                "Runs per game",
-                self.away_data.runs_per_game,
-                self.home_data.runs_per_game,
-                12.0,
-                True,
-            ),
-            (
-                "Team ERA",
-                self.away_data.era,
-                self.home_data.era,
-                9.0,
-                False,
-            ),
-            (
-                "Team WHIP",
-                self.away_data.whip,
-                self.home_data.whip,
-                6.0,
-                False,
-            ),
+            ("Season record", self.away_data.win_pct, self.home_data.win_pct, 10.0, True, 0.120),
+            ("Home/away performance", self.away_data.location_win_pct, self.home_data.location_win_pct, 7.0, True, 0.150),
+            ("OPS", self.away_data.ops, self.home_data.ops, 12.0, True, 0.100),
+            ("Runs per game", self.away_data.runs_per_game, self.home_data.runs_per_game, 10.0, True, 1.50),
+            ("Team ERA", self.away_data.era, self.home_data.era, 8.0, False, 1.50),
+            ("Team WHIP", self.away_data.whip, self.home_data.whip, 5.0, False, 0.35),
+            ("Recent record", self.away_data.recent_win_pct, self.home_data.recent_win_pct, 8.0, True, 0.250),
+            ("Recent run differential", self.away_data.recent_run_differential_per_game, self.home_data.recent_run_differential_per_game, 10.0, True, 3.00),
         ]
 
-        for label, away_value, home_value, points, higher_is_better in team_factors:
-            awarded = self.award_factor(
-                label,
-                away_value,
-                home_value,
-                points,
-                higher_is_better,
+        for label, away_value, home_value, points, higher_is_better, scale in team_factors:
+            away_points, home_points = self.award_factor(
+                label, away_value, home_value, points, higher_is_better, scale
             )
-            away_score += awarded[0]
-            home_score += awarded[1]
+            away_score += away_points
+            home_score += home_points
 
-        pitcher_points = self.score_pitchers()
-        away_score += pitcher_points[0]
-        home_score += pitcher_points[1]
-
-        self.factor_edges.append(
-            ("Home-field advantage", self.home_data.name)
-        )
+        pitcher_away, pitcher_home = self.score_pitchers()
+        away_score += pitcher_away
+        home_score += pitcher_home
+        self.factor_edges.append(("Home-field advantage", self.home_data.name))
 
         total = away_score + home_score
+        raw_away_probability = 50.0 if total <= 0 else (away_score / total) * 100
 
-        if total <= 0:
-            away_probability = 50.0
-            home_probability = 50.0
-        else:
-            away_probability = (away_score / total) * 100
-            home_probability = 100 - away_probability
+        reliability = self.PROBABILITY_SHRINK
+        if not self.away_pitcher.available and not self.home_pitcher.available:
+            reliability *= 0.85
+        elif not self.away_pitcher.available or not self.home_pitcher.available:
+            reliability *= 0.92
 
-        # Keep probabilities from becoming falsely extreme.
-        away_probability = max(20.0, min(80.0, away_probability))
-        home_probability = 100 - away_probability
+        if min(self.away_data.recent_games, self.home_data.recent_games) < 5:
+            reliability *= 0.92
+
+        away_probability = 50.0 + ((raw_away_probability - 50.0) * reliability)
+        away_probability = max(100.0 - self.MAX_PROBABILITY, min(self.MAX_PROBABILITY, away_probability))
+        home_probability = 100.0 - away_probability
 
         if away_probability >= home_probability:
             winner = self.away_data.name
@@ -483,30 +505,32 @@ class PredictionEngine:
         home_value: float,
         points: float,
         higher_is_better: bool,
+        scale: float,
     ) -> tuple[float, float]:
-        """Award model points for one statistical category."""
+        """Split points according to the size of the statistical edge."""
 
         assert self.away_data is not None
         assert self.home_data is not None
 
+        if scale <= 0:
+            raise ValueError("Factor scale must be greater than zero.")
+
         if away_value <= 0 and home_value <= 0:
             return points / 2, points / 2
 
-        if abs(away_value - home_value) < 0.0001:
-            return points / 2, points / 2
+        difference = away_value - home_value
+        if not higher_is_better:
+            difference *= -1
 
-        away_is_better = (
-            away_value > home_value
-            if higher_is_better
-            else away_value < home_value
-        )
+        edge_strength = tanh(difference / scale)
+        away_points = points * (0.5 + (0.5 * edge_strength))
+        home_points = points - away_points
 
-        if away_is_better:
-            self.factor_edges.append((label, self.away_data.name))
-            return points, 0.0
+        if abs(edge_strength) >= 0.08:
+            better_team = self.away_data.name if edge_strength > 0 else self.home_data.name
+            self.factor_edges.append((label, better_team))
 
-        self.factor_edges.append((label, self.home_data.name))
-        return 0.0, points
+        return away_points, home_points
 
     def score_pitchers(self) -> tuple[float, float]:
         """Score the probable starting-pitcher matchup."""
@@ -520,67 +544,36 @@ class PredictionEngine:
             return total_points / 2, total_points / 2
 
         if self.away_pitcher.available and not self.home_pitcher.available:
-            self.factor_edges.append(
-                ("Confirmed starting pitcher", self.away_data.name)
-            )
-            return total_points * 0.65, total_points * 0.35
+            self.factor_edges.append(("Confirmed starting pitcher", self.away_data.name))
+            return total_points * 0.58, total_points * 0.42
 
         if self.home_pitcher.available and not self.away_pitcher.available:
-            self.factor_edges.append(
-                ("Confirmed starting pitcher", self.home_data.name)
-            )
-            return total_points * 0.35, total_points * 0.65
+            self.factor_edges.append(("Confirmed starting pitcher", self.home_data.name))
+            return total_points * 0.42, total_points * 0.58
 
         away_score = 0.0
         home_score = 0.0
-
         pitcher_factors = [
-            ("Starter ERA", self.away_pitcher.era, self.home_pitcher.era, 12.0, False),
-            ("Starter WHIP", self.away_pitcher.whip, self.home_pitcher.whip, 8.0, False),
-            (
-                "Starter strikeout rate",
-                self.pitcher_rate(self.away_pitcher.strikeouts, self.away_pitcher.innings),
-                self.pitcher_rate(self.home_pitcher.strikeouts, self.home_pitcher.innings),
-                5.0,
-                True,
-            ),
-            (
-                "Starter walk rate",
-                self.pitcher_rate(self.away_pitcher.walks, self.away_pitcher.innings),
-                self.pitcher_rate(self.home_pitcher.walks, self.home_pitcher.innings),
-                3.0,
-                False,
-            ),
-            (
-                "Starter opponent average",
-                self.away_pitcher.opponent_average,
-                self.home_pitcher.opponent_average,
-                2.0,
-                False,
-            ),
+            ("Starter ERA", self.away_pitcher.era, self.home_pitcher.era, 10.0, False, 2.00),
+            ("Starter WHIP", self.away_pitcher.whip, self.home_pitcher.whip, 6.0, False, 0.40),
+            ("Starter strikeout rate", self.pitcher_rate(self.away_pitcher.strikeouts, self.away_pitcher.innings), self.pitcher_rate(self.home_pitcher.strikeouts, self.home_pitcher.innings), 4.0, True, 3.00),
+            ("Starter walk rate", self.pitcher_rate(self.away_pitcher.walks, self.away_pitcher.innings), self.pitcher_rate(self.home_pitcher.walks, self.home_pitcher.innings), 3.0, False, 1.50),
+            ("Starter opponent average", self.away_pitcher.opponent_average, self.home_pitcher.opponent_average, 2.0, False, 0.080),
         ]
 
-        for label, away_value, home_value, points, higher_is_better in pitcher_factors:
-            awarded = self.award_factor(
-                label,
-                away_value,
-                home_value,
-                points,
-                higher_is_better,
+        for label, away_value, home_value, points, higher_is_better, scale in pitcher_factors:
+            away_points, home_points = self.award_factor(
+                label, away_value, home_value, points, higher_is_better, scale
             )
-            away_score += awarded[0]
-            home_score += awarded[1]
+            away_score += away_points
+            home_score += home_points
 
-        # Reduce confidence in tiny samples.
         away_reliability = min(self.away_pitcher.innings / 40.0, 1.0)
         home_reliability = min(self.home_pitcher.innings / 40.0, 1.0)
         combined_reliability = (away_reliability + home_reliability) / 2
-
         neutral_share = total_points * (1 - combined_reliability) / 2
-
         away_score = (away_score * combined_reliability) + neutral_share
         home_score = (home_score * combined_reliability) + neutral_share
-
         return away_score, home_score
 
     @staticmethod
@@ -591,21 +584,21 @@ class PredictionEngine:
 
     @staticmethod
     def calculate_confidence(probability: float) -> tuple[str, str]:
-        """Convert a win probability into a confidence label."""
+        """Convert a calibrated win probability into a confidence label."""
 
-        if probability >= 72:
-            return "HIGH", "â˜…â˜…â˜…â˜…â˜…"
-
-        if probability >= 64:
-            return "MEDIUM-HIGH", "â˜…â˜…â˜…â˜…â˜†"
-
-        if probability >= 57:
-            return "MEDIUM", "â˜…â˜…â˜…â˜†â˜†"
-
-        if probability >= 53:
-            return "LOW", "â˜…â˜…â˜†â˜†â˜†"
-
-        return "VERY LOW", "â˜…â˜†â˜†â˜†â˜†"
+        if probability >= 76:
+            return "ELITE", "★★★★★"
+        if probability >= 70:
+            return "VERY HIGH", "★★★★★"
+        if probability >= 65:
+            return "HIGH", "★★★★☆"
+        if probability >= 60:
+            return "MEDIUM-HIGH", "★★★★☆"
+        if probability >= 55:
+            return "MEDIUM", "★★★☆☆"
+        if probability >= 52:
+            return "LOW", "★★☆☆☆"
+        return "VERY LOW", "★☆☆☆☆"
 
     def build_reasons(self, winner: str) -> list[str]:
         """Create a concise list of factors favoring the predicted winner."""
@@ -668,6 +661,18 @@ class PredictionEngine:
             2,
         )
 
+        print("\nRECENT FORM")
+        print("-" * 62)
+        print(
+            f"{'Last 10 record':<25}"
+            f"{self.away_data.recent_wins:>5}-{self.away_data.recent_losses:<6}"
+            f"{self.home_data.recent_wins:>5}-{self.home_data.recent_losses:<6}"
+        )
+        self.print_stat_row("Recent win percentage", self.away_data.recent_win_pct, self.home_data.recent_win_pct, 3)
+        self.print_stat_row("Recent runs/game", self.away_data.recent_runs_per_game, self.home_data.recent_runs_per_game, 2)
+        self.print_stat_row("Recent runs allowed/game", self.away_data.recent_runs_allowed_per_game, self.home_data.recent_runs_allowed_per_game, 2)
+        self.print_stat_row("Recent run diff/game", self.away_data.recent_run_differential_per_game, self.home_data.recent_run_differential_per_game, 2)
+
         print("\nPROBABLE STARTING PITCHERS")
         print("-" * 62)
         self.display_pitcher(self.away_data.name, self.away_pitcher)
@@ -694,7 +699,7 @@ class PredictionEngine:
 
         if result.reasons:
             for reason in result.reasons:
-                print(f"âœ“ {reason}")
+                print(f"✓ {reason}")
         else:
             print("The matchup is nearly even across the available factors.")
 
@@ -704,31 +709,6 @@ class PredictionEngine:
         )
         print("=" * 62)
 
-    def save_prediction_to_history(self, result: ModelResult) -> None:
-        """Save the completed prediction to prediction history."""
-
-        assert self.away_data is not None
-        assert self.home_data is not None
-
-        if result.winner == self.away_data.name:
-            winning_probability = result.away_probability
-        else:
-            winning_probability = result.home_probability
-
-        try:
-            prediction_id = save_prediction(
-                away_team=self.away_data.name,
-                home_team=self.home_data.name,
-                predicted_winner=result.winner,
-                predicted_probability=winning_probability,
-                confidence=result.confidence,
-            )
-        except (OSError, ValueError) as error:
-            print(f"\nPrediction could not be saved to history: {error}")
-            return
-
-        print("\nPrediction saved to history.")
-        print(f"Prediction ID: {prediction_id}")
     def print_stat_row(
         self,
         label: str,
@@ -775,11 +755,10 @@ class PredictionEngine:
 
 def predict_matchup() -> None:
     """
-    Run Prediction Engine 3.0.
+    Run Prediction Engine 4.0.
 
     This wrapper preserves compatibility with an existing app.py that
     imports and calls ``predict_matchup()``.
     """
 
     PredictionEngine().run()
-

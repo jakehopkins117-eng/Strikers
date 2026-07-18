@@ -5,12 +5,14 @@ from services.standings import display_standings
 from services.comparison import display_team_comparison
 from services.prediction import predict_matchup
 from services.power_ratings import display_power_rating
+from services.power_rankings import display_power_rankings
+from services.best_bets import display_best_bets
 
 
-def print_menu():
-    print("\n" + "=" * 50)
-    print("STRIKERS MLB ANALYTICS".center(50))
-    print("=" * 50)
+def print_menu() -> None:
+    print("\n" + "=" * 52)
+    print("STRIKERS MLB ANALYTICS".center(52))
+    print("=" * 52)
     print("1. Today's Games")
     print("2. Search Team")
     print("3. Search Player")
@@ -18,11 +20,13 @@ def print_menu():
     print("5. Compare Two Teams")
     print("6. Predict a Matchup")
     print("7. Team Power Rating")
-    print("8. Exit")
-    print("=" * 50)
+    print("8. MLB Power Rankings")
+    print("9. Best Bets of the Day")
+    print("10. Exit")
+    print("=" * 52)
 
 
-def main():
+def main() -> None:
     while True:
         print_menu()
 
@@ -50,11 +54,19 @@ def main():
             display_power_rating()
 
         elif choice == "8":
+            display_power_rankings()
+
+        elif choice == "9":
+            display_best_bets()
+
+        elif choice == "10":
             print("\nThanks for using Strikers!")
             break
 
         else:
-            print("\nInvalid option. Please try again.")
+            print(
+                "\nInvalid option. Please choose a number from 1 to 10."
+            )
 
 
 if __name__ == "__main__":

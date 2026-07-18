@@ -8,7 +8,7 @@ statistics, and probable starting pitchers.
 Identical API requests are cached temporarily to reduce loading times.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import requests
@@ -457,6 +457,118 @@ def extract_first_stat_split(
 
     return first_split.get("stat")
 
+
+
+def get_team_recent_form(
+    team_id: int,
+    games: int = 10,
+    end_date: str | None = None,
+    force_refresh: bool = False,
+) -> dict[str, Any]:
+    """Return a team's most recent completed regular-season games."""
+
+    requested_games = max(1, min(int(games), 30))
+
+    if end_date:
+        try:
+            final_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError as error:
+            raise ValueError("end_date must use YYYY-MM-DD format.") from error
+    else:
+        final_date = datetime.now().astimezone().date()
+
+    start_date = final_date - timedelta(days=45)
+
+    data = make_request(
+        "/schedule",
+        params={
+            "sportId": 1,
+            "teamId": team_id,
+            "startDate": start_date.strftime("%Y-%m-%d"),
+            "endDate": final_date.strftime("%Y-%m-%d"),
+            "gameType": "R",
+            "hydrate": "linescore",
+        },
+        cache_seconds=300,
+        force_refresh=force_refresh,
+    )
+
+    completed_games: list[dict[str, Any]] = []
+
+    for date_group in data.get("dates", []):
+        for game in date_group.get("games", []):
+            status = game.get("status", {})
+            coded_state = str(status.get("codedGameState", "")).upper()
+            detailed_state = str(status.get("detailedState", "")).lower()
+            is_completed = (
+                coded_state == "F"
+                or "final" in detailed_state
+                or "game over" in detailed_state
+                or "completed early" in detailed_state
+            )
+            if is_completed:
+                completed_games.append({
+                    "game": game,
+                    "game_date": str(game.get("gameDate", "")),
+                })
+
+    completed_games.sort(key=lambda item: item["game_date"], reverse=True)
+    completed_games = completed_games[:requested_games]
+
+    wins = losses = runs_scored = runs_allowed = 0
+    game_details: list[dict[str, Any]] = []
+
+    for item in completed_games:
+        game = item["game"]
+        teams = game.get("teams", {})
+        away = teams.get("away", {})
+        home = teams.get("home", {})
+        away_team_id = away.get("team", {}).get("id")
+        home_team_id = home.get("team", {}).get("id")
+        away_score = int(away.get("score") or 0)
+        home_score = int(home.get("score") or 0)
+
+        if away_team_id == team_id:
+            team_score, opponent_score = away_score, home_score
+            opponent = home.get("team", {}).get("name", "Unknown")
+            location = "away"
+        elif home_team_id == team_id:
+            team_score, opponent_score = home_score, away_score
+            opponent = away.get("team", {}).get("name", "Unknown")
+            location = "home"
+        else:
+            continue
+
+        won = team_score > opponent_score
+        wins += int(won)
+        losses += int(not won)
+        runs_scored += team_score
+        runs_allowed += opponent_score
+        game_details.append({
+            "date": item["game_date"][:10],
+            "opponent": opponent,
+            "location": location,
+            "runs_scored": team_score,
+            "runs_allowed": opponent_score,
+            "result": "W" if won else "L",
+        })
+
+    games_played = wins + losses
+    run_differential = runs_scored - runs_allowed
+
+    return {
+        "games_played": games_played,
+        "wins": wins,
+        "losses": losses,
+        "win_pct": wins / games_played if games_played else 0.5,
+        "runs_scored": runs_scored,
+        "runs_allowed": runs_allowed,
+        "runs_per_game": runs_scored / games_played if games_played else 0.0,
+        "runs_allowed_per_game": runs_allowed / games_played if games_played else 0.0,
+        "run_differential": run_differential,
+        "run_differential_per_game": run_differential / games_played if games_played else 0.0,
+        "games": game_details,
+    }
 
 def get_probable_pitchers_for_game(
     game: dict[str, Any],
