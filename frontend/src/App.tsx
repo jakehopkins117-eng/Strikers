@@ -79,6 +79,10 @@ type PredictionResponse = {
     recommended_action: string;
     disclaimer: string;
     game_report: string;
+    key_matchup: string;
+    game_script: string;
+    confidence_explanation: string;
+    swing_factor: string;
     model_version: string;
     factors: { name:string; home_points:number; away_points:number; favored_team:string; strength:number; detail:string; available:boolean }[];
     risk: { level:string; volatility:number; upset_chance:number; confidence:number };
@@ -873,52 +877,77 @@ function ProbabilityBar({ label, value }: { label: string; value: number }) {
 
 function GameIntelligence({ result }: { result: PredictionResponse }) {
   const insight = result.intelligence;
+  const maxFactor = Math.max(...insight.factors.map((factor) => factor.strength), 1);
 
   return (
-    <article className="panel intelligence-card">
-      <div className="intelligence-heading">
+    <article className="panel intelligence-card intelligence-v2">
+      <header className="intelligence-heading intelligence-hero">
         <div>
           <p className="eyebrow">STRIKERS GAME INTELLIGENCE</p>
           <h3>{insight.headline}</h3>
-          <p>{insight.summary}</p>
+          <p className="executive-summary">{insight.summary}</p>
         </div>
         <div className={`intelligence-grade grade-${insight.grade.toLowerCase().replace(" ", "-")}`}>
           <span>{insight.recommended_action}</span>
           <strong>{insight.grade}</strong>
-          <small>{insight.edge_points.toFixed(1)}-point edge</small>
+          <small>{insight.edge_points.toFixed(1)}-point model edge</small>
         </div>
+      </header>
+
+      <div className="risk-strip intelligence-metrics">
+        <div><span>Model grade</span><strong>{insight.grade}</strong></div>
+        <div><span>Risk profile</span><strong>{insight.risk.level}</strong></div>
+        <div><span>Volatility</span><strong>{insight.risk.volatility}/100</strong></div>
+        <div><span>Upset probability</span><strong>{insight.risk.upset_chance.toFixed(1)}%</strong></div>
       </div>
 
-      <div className="risk-strip"><div><span>Model grade</span><strong>{insight.grade}</strong></div><div><span>Risk</span><strong>{insight.risk.level}</strong></div><div><span>Volatility</span><strong>{insight.risk.volatility}/100</strong></div><div><span>Upset chance</span><strong>{insight.risk.upset_chance.toFixed(1)}%</strong></div></div>
+      <section className="overview-grid">
+        <article className="overview-card overview-primary">
+          <p className="eyebrow">PROJECTED GAME SCRIPT</p>
+          <h4>How Strikers expects the game to unfold</h4>
+          <p>{insight.game_script}</p>
+        </article>
+        <article className="overview-card">
+          <p className="eyebrow">KEY MATCHUP</p>
+          <h4>Matchup to watch</h4>
+          <p>{insight.key_matchup}</p>
+        </article>
+        <article className="overview-card">
+          <p className="eyebrow">CONFIDENCE CONTEXT</p>
+          <h4>Why the grade lands here</h4>
+          <p>{insight.confidence_explanation}</p>
+        </article>
+        <article className="overview-card overview-warning">
+          <p className="eyebrow">SWING FACTOR</p>
+          <h4>What could change the outlook</h4>
+          <p>{insight.swing_factor}</p>
+        </article>
+      </section>
 
-      <section className="factor-breakdown"><div className="factor-title"><div><p className="eyebrow">FACTOR BREAKDOWN</p><h3>How each input moves the matchup</h3></div><span>{insight.model_version}</span></div>{insight.factors.map(factor => <div className="factor-row" key={factor.name}><div><strong>{factor.name}</strong><span>{factor.detail}</span></div><div className="factor-score"><b>{factor.favored_team}</b><strong>{factor.available ? `${factor.strength.toFixed(1)} pts` : "N/A"}</strong></div></div>)}</section>
-
-      <div className="game-report"><p className="eyebrow">AUTOMATED GAME REPORT</p><p>{insight.game_report}</p></div>
+      <section className="factor-breakdown factor-visual">
+        <div className="factor-title">
+          <div><p className="eyebrow">PREDICTION DRIVERS</p><h3>Where the matchup edge comes from</h3></div>
+          <span>{insight.model_version}</span>
+        </div>
+        {insight.factors.map((factor) => (
+          <div className="factor-row factor-row-v2" key={factor.name}>
+            <div className="factor-copy">
+              <div className="factor-label"><strong>{factor.name}</strong><b>{factor.favored_team}</b></div>
+              <span>{factor.detail}</span>
+              <div className="factor-track"><i style={{ width: factor.available ? `${Math.max(7, (factor.strength / maxFactor) * 100)}%` : "0%" }} /></div>
+            </div>
+            <div className="factor-score"><strong>{factor.available ? `${factor.strength.toFixed(1)} pts` : "N/A"}</strong></div>
+          </div>
+        ))}
+      </section>
 
       <div className="intelligence-columns">
-        <IntelligenceList
-          title="Key advantages"
-          icon="↗"
-          items={insight.advantages}
-          emptyText="No single metric dominates this matchup."
-          tone="positive"
-        />
-        <IntelligenceList
-          title="Risk factors"
-          icon="!"
-          items={insight.risks}
-          emptyText="No major statistical warning was detected."
-          tone="warning"
-        />
-        <IntelligenceList
-          title="Before first pitch"
-          icon="◎"
-          items={insight.watch_items}
-          emptyText="No additional watch items."
-          tone="neutral"
-        />
+        <IntelligenceList title="Why the pick works" icon="↗" items={insight.advantages} emptyText="No single metric dominates this matchup." tone="positive" />
+        <IntelligenceList title="Primary concerns" icon="!" items={insight.risks} emptyText="No major statistical warning was detected." tone="warning" />
+        <IntelligenceList title="Before first pitch" icon="◎" items={insight.watch_items} emptyText="No additional watch items." tone="neutral" />
       </div>
 
+      <div className="game-report editorial-note"><p className="eyebrow">ANALYST NOTE</p><p>{insight.game_report}</p></div>
       <p className="intelligence-disclaimer">{insight.disclaimer}</p>
     </article>
   );

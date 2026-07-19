@@ -58,8 +58,8 @@ def build_model_intelligence(payload: dict[str, Any]) -> dict[str, Any]:
     sp_available = away_sp_era is not None and home_sp_era is not None
     sp_points = (away_sp_era - home_sp_era) * 1.6 if sp_available else 0.0
     factors.append(_factor(
-        "Starting pitcher", sp_points, away_name, home_name,
-        f"{home_pitcher.get('name', 'Home starter')} {home_sp_era:.2f} ERA vs. {away_pitcher.get('name', 'Away starter')} {away_sp_era:.2f} ERA" if sp_available else "One or both probable starters lack usable season data.",
+        "Starting pitching", sp_points, away_name, home_name,
+        f"{home_pitcher.get('name', 'Home starter')} owns a {home_sp_era:.2f} ERA compared with {away_pitcher.get('name', 'Away starter')} at {away_sp_era:.2f}." if sp_available else "One or both probable starters lack a reliable season sample.",
         sp_available,
     ))
 
@@ -68,8 +68,8 @@ def build_model_intelligence(payload: dict[str, Any]) -> dict[str, Any]:
     offense_available = None not in (away_ops, home_ops, away_rpg, home_rpg)
     offense_points = ((home_ops - away_ops) * 35 + (home_rpg - away_rpg) * 1.2) if offense_available else 0.0
     factors.append(_factor(
-        "Offense", offense_points, away_name, home_name,
-        f"OPS {home_ops:.3f} vs. {away_ops:.3f}; runs/game {home_rpg:.2f} vs. {away_rpg:.2f}" if offense_available else "Complete team offense data is unavailable.",
+        "Offensive production", offense_points, away_name, home_name,
+        f"{home_name} carries a {home_ops:.3f} OPS and {home_rpg:.2f} runs per game; {away_name} enters at {away_ops:.3f} and {away_rpg:.2f}." if offense_available else "Complete team offensive data is unavailable.",
         offense_available,
     ))
 
@@ -78,8 +78,8 @@ def build_model_intelligence(payload: dict[str, Any]) -> dict[str, Any]:
     pitching_available = None not in (away_era, home_era, away_whip, home_whip)
     pitching_points = ((away_era - home_era) * 1.0 + (away_whip - home_whip) * 3.0) if pitching_available else 0.0
     factors.append(_factor(
-        "Team pitching", pitching_points, away_name, home_name,
-        f"ERA {home_era:.2f} vs. {away_era:.2f}; WHIP {home_whip:.2f} vs. {away_whip:.2f}" if pitching_available else "Complete staff pitching data is unavailable.",
+        "Staff run prevention", pitching_points, away_name, home_name,
+        f"{home_name} posts a {home_era:.2f} team ERA and {home_whip:.2f} WHIP versus {away_name} at {away_era:.2f} and {away_whip:.2f}." if pitching_available else "Complete staff pitching data is unavailable.",
         pitching_available,
     ))
 
@@ -89,7 +89,7 @@ def build_model_intelligence(payload: dict[str, Any]) -> dict[str, Any]:
     recent_points = ((home_recent - away_recent) * 12 + (home_rd - away_rd) * 1.15) if recent_available else 0.0
     factors.append(_factor(
         "Recent form", recent_points, away_name, home_name,
-        f"Recent win rate {home_recent*100:.0f}% vs. {away_recent*100:.0f}%; run differential {home_rd:+.2f} vs. {away_rd:+.2f}" if recent_available else "Recent-form sample is incomplete.",
+        f"Recent win rate favors {home_name} at {home_recent*100:.0f}% versus {away_recent*100:.0f}%, with run differential at {home_rd:+.2f} and {away_rd:+.2f} per game." if recent_available else "The recent-form sample is incomplete.",
         recent_available,
     ))
 
@@ -98,12 +98,12 @@ def build_model_intelligence(payload: dict[str, Any]) -> dict[str, Any]:
     season_points = (home_wp - away_wp) * 12 if season_available else 0.0
     factors.append(_factor(
         "Season strength", season_points, away_name, home_name,
-        f"Season win percentage {home_wp*100:.1f}% vs. {away_wp*100:.1f}%" if season_available else "Season records are unavailable.",
+        f"{home_name} enters with a {home_wp*100:.1f}% win rate compared with {away_name} at {away_wp*100:.1f}%." if season_available else "Season records are unavailable.",
         season_available,
     ))
 
     factors.append(_factor(
-        "Home field", 2.4, away_name, home_name,
+        "Home-field context", 2.4, away_name, home_name,
         f"{home_name} receives the engine's standard home-field adjustment.", True,
     ))
 
@@ -115,59 +115,98 @@ def build_model_intelligence(payload: dict[str, Any]) -> dict[str, Any]:
     edge = abs(away_probability - home_probability)
 
     sorted_factors = sorted(factors, key=lambda item: item["strength"], reverse=True)
+    winner_factors = [item for item in sorted_factors if item["favored_team"] == winner and item["available"]]
+    loser_factors = [item for item in sorted_factors if item["favored_team"] == loser and item["available"]]
+
     advantages = [
-        f"{item['favored_team']}: {item['name']} ({item['strength']:.1f} pts) — {item['detail']}"
-        for item in sorted_factors
-        if item["favored_team"] == winner and item["strength"] >= 0.5
+        f"{item['name']}: {item['detail']}"
+        for item in winner_factors if item["strength"] >= 0.5
     ]
-    opposing = [
-        f"{item['favored_team']}: {item['name']} ({item['strength']:.1f} pts) — {item['detail']}"
-        for item in sorted_factors
-        if item["favored_team"] == loser and item["strength"] >= 0.5
+    risks = [
+        f"{item['name']}: {item['detail']}"
+        for item in loser_factors if item["strength"] >= 0.5
     ]
 
     unavailable = [item["name"] for item in factors if not item["available"]]
-    risks = opposing[:3]
     if edge < 6:
-        risks.append("The probability gap is narrow enough that lineup news can flip the preferred side.")
+        risks.append("The projected margin is narrow enough that confirmed lineups or a pitching change could reverse the preferred side.")
     if unavailable:
-        risks.append(f"Incomplete inputs: {', '.join(unavailable)}.")
+        risks.append(f"Incomplete inputs remain for {', '.join(unavailable)}.")
 
     volatility = round(_clamp(48 - edge * 1.5 + len(risks) * 5, 10, 85), 0)
     upset_chance = round(100 - winner_probability, 1)
     if winner_probability >= 70:
-        grade, action = "A", "Moneyline candidate"
+        grade, action = "A", "Strong model position"
     elif winner_probability >= 64:
-        grade, action = "B+", "Playable lean"
+        grade, action = "B+", "Clear matchup lean"
     elif winner_probability >= 58:
-        grade, action = "B-", "Small lean only"
+        grade, action = "B-", "Measured lean"
     else:
-        grade, action = "C", "Pass"
+        grade, action = "C", "Limited separation"
 
-    lead = advantages[0] if advantages else "No single factor creates a dominant statistical edge."
-    counter = risks[0] if risks else f"No major factor strongly supports {loser}."
+    top_support = winner_factors[0] if winner_factors else None
+    top_counter = loser_factors[0] if loser_factors else None
+    support_name = top_support["name"].lower() if top_support else "the overall statistical profile"
+    counter_name = top_counter["name"].lower() if top_counter else "late-breaking lineup and availability news"
+
+    summary = (
+        f"Strikers gives {winner} the advantage at {winner_probability:.1f}%, led by {support_name}. "
+        f"The projection is not one-dimensional: {counter_name} remains the clearest source of resistance for {loser}. "
+        f"Overall, the matchup grades as a {action.lower()} rather than a certainty."
+    )
+
+    away_sp_name = away_pitcher.get("name") or f"the {away_name} starter"
+    home_sp_name = home_pitcher.get("name") or f"the {home_name} starter"
+    key_matchup = (
+        f"{home_sp_name} against the {away_name} offense is the central matchup, with {away_sp_name} and the {home_name} lineup providing the opposite-side comparison. "
+        f"The side that controls traffic on the bases early is most likely to dictate bullpen usage later."
+    )
+
+    if top_support:
+        game_script = (
+            f"The model expects {winner} to create separation through {top_support['name'].lower()}. "
+            f"A clean first five innings would allow the favored side to manage the game from ahead, while {loser}'s best path is to force early traffic and expose the opposing bullpen sooner than projected."
+        )
+    else:
+        game_script = (
+            f"The matchup projects as competitive through the middle innings. {winner} owns the slight overall edge, but neither side has a dominant statistical driver, making bullpen execution and timely extra-base hits especially important."
+        )
+
+    confidence_explanation = (
+        f"The {grade} grade reflects a {edge:.1f}-point probability gap with {int(volatility)}/100 estimated volatility. "
+        f"Confidence is supported by {support_name}, while {counter_name} prevents the projection from being treated as a lock."
+    )
+
+    swing_factor = (
+        f"The outlook would move most if either probable starter changes, a core hitter is removed from the posted lineup, or bullpen availability differs from expectation. "
+        f"Those updates matter more in a matchup with a {edge:.1f}-point edge than small changes in season-long averages."
+    )
+
     report = (
-        f"Strikers projects {winner} at {winner_probability:.1f}% in this matchup. "
-        f"The strongest supporting signal is {lead.lower()} "
-        f"The main counterweight is {counter.lower()} "
-        f"With an estimated volatility score of {int(volatility)}/100, the recommended posture is {action.lower()}."
+        f"{winner} is the model's preferred side at {winner_probability:.1f}%. "
+        f"The strongest supporting driver is {support_name}; the main counterweight is {counter_name}. "
+        f"Because the upset probability remains {upset_chance:.1f}%, the projection should be read as a quantified lean, not a guaranteed outcome."
     )
 
     return {
-        "headline": f"{winner} holds the model's overall matchup advantage.",
-        "summary": report,
+        "headline": f"{winner} owns the more complete matchup profile.",
+        "summary": summary,
         "game_report": report,
+        "key_matchup": key_matchup,
+        "game_script": game_script,
+        "confidence_explanation": confidence_explanation,
+        "swing_factor": swing_factor,
         "grade": grade,
         "edge_points": round(edge, 1),
-        "advantages": advantages[:5],
+        "advantages": advantages[:4],
         "risks": risks[:4],
         "watch_items": [
-            "Confirm probable starters and posted lineups.",
-            "Review bullpen availability after the previous two games.",
-            "Re-check weather and venue roof status near first pitch.",
+            "Confirm both probable starters and the official batting orders.",
+            "Review high-leverage bullpen usage from the previous two games.",
+            "Re-check weather, wind direction, and roof status near first pitch.",
         ],
         "recommended_action": action,
-        "disclaimer": "Informational model output only; it does not include live sportsbook prices or every late-breaking change.",
+        "disclaimer": "Informational model analysis only. Late lineup changes, pitching scratches, bullpen availability, and market prices can materially alter the outlook.",
         "factors": factors,
         "risk": {
             "level": "Low" if volatility <= 30 else "Moderate" if volatility <= 55 else "High",
@@ -175,7 +214,7 @@ def build_model_intelligence(payload: dict[str, Any]) -> dict[str, Any]:
             "upset_chance": upset_chance,
             "confidence": round(winner_probability, 1),
         },
-        "model_version": "7.0-explainable",
+        "model_version": "7.1-intelligence",
     }
 
 
