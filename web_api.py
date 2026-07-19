@@ -25,6 +25,7 @@ from uuid import uuid4
 import requests
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from services.prediction import PredictionEngine
@@ -34,6 +35,13 @@ from services.model_intelligence import build_model_intelligence, model_lab_payl
 
 
 app = FastAPI(
+    app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
     title="Strikers API",
     version="10.12.0",
     description="Web API for the Strikers MLB prediction platform.",
