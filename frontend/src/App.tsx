@@ -79,6 +79,8 @@ type PredictionResponse = {
     recommended_action: string;
     disclaimer: string;
     game_report: string;
+    primary_concern: string;
+    bottom_line: string;
     key_matchup: string;
     game_script: string;
     confidence_explanation: string;
@@ -917,6 +919,11 @@ function GameIntelligence({ result }: { result: PredictionResponse }) {
           <h4>Why the grade lands here</h4>
           <p>{insight.confidence_explanation}</p>
         </article>
+        <article className="overview-card overview-concern">
+          <p className="eyebrow">PRIMARY CONCERN</p>
+          <h4>The clearest path to an upset</h4>
+          <p>{insight.primary_concern}</p>
+        </article>
         <article className="overview-card overview-warning">
           <p className="eyebrow">SWING FACTOR</p>
           <h4>What could change the outlook</h4>
@@ -948,6 +955,7 @@ function GameIntelligence({ result }: { result: PredictionResponse }) {
       </div>
 
       <div className="game-report editorial-note"><p className="eyebrow">ANALYST NOTE</p><p>{insight.game_report}</p></div>
+      <div className="bottom-line-note"><p className="eyebrow">BOTTOM LINE</p><p>{insight.bottom_line}</p></div>
       <p className="intelligence-disclaimer">{insight.disclaimer}</p>
     </article>
   );

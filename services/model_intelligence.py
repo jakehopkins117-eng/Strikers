@@ -146,52 +146,91 @@ def build_model_intelligence(payload: dict[str, Any]) -> dict[str, Any]:
 
     top_support = winner_factors[0] if winner_factors else None
     top_counter = loser_factors[0] if loser_factors else None
-    support_name = top_support["name"].lower() if top_support else "the overall statistical profile"
-    counter_name = top_counter["name"].lower() if top_counter else "late-breaking lineup and availability news"
+    support_name = top_support["name"].lower() if top_support else "the broader statistical profile"
+    counter_name = top_counter["name"].lower() if top_counter else "late lineup and availability news"
+
+    if winner_probability >= 70:
+        confidence_phrase = "a strong statistical position"
+    elif winner_probability >= 64:
+        confidence_phrase = "a clear matchup advantage"
+    elif winner_probability >= 58:
+        confidence_phrase = "a modest but meaningful edge"
+    else:
+        confidence_phrase = "a narrow lean in a competitive matchup"
 
     summary = (
-        f"Strikers gives {winner} the advantage at {winner_probability:.1f}%, led by {support_name}. "
-        f"The projection is not one-dimensional: {counter_name} remains the clearest source of resistance for {loser}. "
-        f"Overall, the matchup grades as a {action.lower()} rather than a certainty."
+        f"{winner} enters with {confidence_phrase}, with {support_name} providing the clearest separation. "
+        f"{loser} remains competitive because of {counter_name}, so the projection is best viewed as a measured advantage rather than a certainty."
     )
 
     away_sp_name = away_pitcher.get("name") or f"the {away_name} starter"
     home_sp_name = home_pitcher.get("name") or f"the {home_name} starter"
     key_matchup = (
-        f"{home_sp_name} against the {away_name} offense is the central matchup, with {away_sp_name} and the {home_name} lineup providing the opposite-side comparison. "
-        f"The side that controls traffic on the bases early is most likely to dictate bullpen usage later."
+        f"The central matchup is {home_sp_name} against the {away_name} lineup, with {away_sp_name} facing the {home_name} offense on the other side. "
+        "Whichever starter limits early traffic is more likely to hand the game to the stronger bullpen in favorable situations."
     )
 
     if top_support:
         game_script = (
-            f"The model expects {winner} to create separation through {top_support['name'].lower()}. "
-            f"A clean first five innings would allow the favored side to manage the game from ahead, while {loser}'s best path is to force early traffic and expose the opposing bullpen sooner than projected."
+            f"Strikers expects {winner} to build its advantage through {top_support['name'].lower()}. "
+            f"The preferred path is a controlled first five innings followed by favorable bullpen matchups. "
+            f"{loser}'s best route is to create early baserunners, raise the opposing starter's pitch count, and prevent the favored side from managing the game from ahead."
         )
     else:
         game_script = (
-            f"The matchup projects as competitive through the middle innings. {winner} owns the slight overall edge, but neither side has a dominant statistical driver, making bullpen execution and timely extra-base hits especially important."
+            f"This matchup projects to remain close into the middle innings. {winner} owns the slight overall edge, but no single category creates decisive separation. "
+            "Bullpen execution, defensive mistakes, and timely extra-base hits are likely to determine the result."
+        )
+
+    if top_counter:
+        primary_concern = (
+            f"The main concern for the {winner} projection is {top_counter['name'].lower()}. "
+            f"That advantage gives {loser} a credible path to outperform the model, particularly if the game remains within one run entering the late innings."
+        )
+    elif edge < 6:
+        primary_concern = (
+            "The probability gap is small, leaving the recommendation sensitive to confirmed lineups, pitcher changes, and bullpen availability. "
+            "A single late update could materially change the preferred side."
+        )
+    else:
+        primary_concern = (
+            f"The largest remaining risk is normal baseball variance. Even with the stronger profile, {winner} can lose the matchup through poor sequencing, defensive mistakes, or an early pitching exit."
         )
 
     confidence_explanation = (
-        f"The {grade} grade reflects a {edge:.1f}-point probability gap with {int(volatility)}/100 estimated volatility. "
-        f"Confidence is supported by {support_name}, while {counter_name} prevents the projection from being treated as a lock."
+        f"The {grade} grade reflects a {edge:.1f}-point probability gap and {int(volatility)}/100 estimated volatility. "
+        f"Confidence is strengthened by {support_name}. It is limited by {counter_name} and an upset probability of {upset_chance:.1f}%."
     )
 
     swing_factor = (
-        f"The outlook would move most if either probable starter changes, a core hitter is removed from the posted lineup, or bullpen availability differs from expectation. "
-        f"Those updates matter more in a matchup with a {edge:.1f}-point edge than small changes in season-long averages."
+        "The projection is most sensitive to a starting-pitcher change, an important hitter being removed from the lineup, or unexpected bullpen unavailability. "
+        f"Because the current edge is {edge:.1f} points, those updates matter more than small changes in season-long averages."
     )
 
+    if winner_probability >= 64:
+        bottom_line = (
+            f"{winner} deserves to be favored and owns the cleaner overall profile. The model identifies a real advantage, but the remaining upset risk supports disciplined confidence rather than an aggressive all-or-nothing position."
+        )
+    elif winner_probability >= 58:
+        bottom_line = (
+            f"The data supports {winner}, but the margin is not large enough to treat the matchup as one-sided. This is a reasonable lean with identifiable strengths and a meaningful path for {loser} to stay competitive."
+        )
+    else:
+        bottom_line = (
+            f"{winner} holds only a slight edge. The matchup is close enough that price, confirmed lineups, and late pitching news should carry nearly as much weight as the initial model preference."
+        )
+
     report = (
-        f"{winner} is the model's preferred side at {winner_probability:.1f}%. "
-        f"The strongest supporting driver is {support_name}; the main counterweight is {counter_name}. "
-        f"Because the upset probability remains {upset_chance:.1f}%, the projection should be read as a quantified lean, not a guaranteed outcome."
+        f"{winner} is the preferred side at {winner_probability:.1f}%. {support_name.capitalize()} is the primary advantage, while {counter_name} is the most important counterweight. "
+        f"With a {upset_chance:.1f}% upset probability, the recommendation is a quantified lean—not a guaranteed outcome."
     )
 
     return {
         "headline": f"{winner} owns the more complete matchup profile.",
         "summary": summary,
         "game_report": report,
+        "primary_concern": primary_concern,
+        "bottom_line": bottom_line,
         "key_matchup": key_matchup,
         "game_script": game_script,
         "confidence_explanation": confidence_explanation,
@@ -214,7 +253,7 @@ def build_model_intelligence(payload: dict[str, Any]) -> dict[str, Any]:
             "upset_chance": upset_chance,
             "confidence": round(winner_probability, 1),
         },
-        "model_version": "7.1-intelligence",
+        "model_version": "7.2-editorial",
     }
 
 
