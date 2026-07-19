@@ -30,11 +30,12 @@ from pydantic import BaseModel, Field
 from services.prediction import PredictionEngine
 from services.performance import build_performance, grade_predictions
 from services.weather import weather_for_game
+from services.model_intelligence import build_model_intelligence, model_lab_payload
 
 
 app = FastAPI(
     title="Strikers API",
-    version="8.9.0",
+    version="10.12.0",
     description="Web API for the Strikers MLB prediction platform.",
 )
 
@@ -481,7 +482,7 @@ def _run_prediction(
         "away_pitcher": _pitcher_payload(engine.away_pitcher),
         "home_pitcher": _pitcher_payload(engine.home_pitcher),
     }
-    payload["intelligence"] = _build_game_intelligence(payload)
+    payload["intelligence"] = build_model_intelligence(payload)
 
     if save_history:
         _save_prediction(payload)
@@ -674,7 +675,7 @@ def root() -> dict[str, str]:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "online", "engine": "4.0", "sprint": "5"}
+    return {"status": "online", "engine": "7.0", "sprint": "10-12"}
 
 
 @app.get("/teams")
@@ -1083,6 +1084,15 @@ def model_performance(refresh: bool = Query(default=True)) -> dict[str, Any]:
         if changed:
             _write_history(history)
     return build_performance(history)
+
+
+@app.get("/model-lab")
+def model_lab() -> dict[str, Any]:
+    history = _read_history()
+    graded, changed = grade_predictions(history, schedule)
+    if changed:
+        _write_history(graded)
+    return model_lab_payload(build_performance(graded))
 
 
 @app.get("/weather")

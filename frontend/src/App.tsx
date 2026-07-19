@@ -10,7 +10,8 @@ type Page =
   | "Team Analytics"
   | "Player Props"
   | "Model Performance"
-  | "Weather Center";
+  | "Weather Center"
+  | "Model Lab";
 
 type TeamOption = {
   id: number;
@@ -77,6 +78,10 @@ type PredictionResponse = {
     watch_items: string[];
     recommended_action: string;
     disclaimer: string;
+    game_report: string;
+    model_version: string;
+    factors: { name:string; home_points:number; away_points:number; favored_team:string; strength:number; detail:string; available:boolean }[];
+    risk: { level:string; volatility:number; upset_chance:number; confidence:number };
   };
 };
 
@@ -126,6 +131,12 @@ type PropAnalysis = { recommendation: string; over_probability: number; under_pr
 
 type Performance = { summary: { total_predictions:number; graded_predictions:number; pending_predictions:number; wins:number; losses:number; accuracy:number; units:number; roi:number; current_streak:number; streak_type:string|null }; confidence_tiers:{tier:string;predictions:number;wins:number;accuracy:number}[]; trend:{date:string;accuracy:number;predictions:number;cumulative_units:number}[]; team_performance:{team:string;predictions:number;wins:number;accuracy:number}[]; calibration:{bucket:string;predictions:number;expected:number;actual:number}[]; recent:HistoryItem[]; };
 
+
+type ModelLab = {
+  engine:string; architecture:string; status:string; games_evaluated:number; accuracy:number; roi:number; units:number; calibration:string;
+  features:{name:string;importance:number;description:string}[]; limitations:string[];
+};
+
 type WeatherGame = Game & { weather: { indoor:boolean; available:boolean; temperature_f?:number; precipitation_probability?:number; wind_mph?:number; gust_mph?:number; impact:string; impact_score:number; summary:string } };
 
 type HistoryItem = {
@@ -159,6 +170,7 @@ const navItems: { label: Page; icon: string }[] = [
   { label: "Power Rankings", icon: "▥" },
   { label: "Model Performance", icon: "↗" },
   { label: "Weather Center", icon: "☁" },
+  { label: "Model Lab", icon: "◈" },
   { label: "Prediction History", icon: "↺" },
 ];
 
@@ -207,6 +219,8 @@ function App() {
   const [weatherGames, setWeatherGames] = useState<WeatherGame[]>([]);
   const [loadingPerformance, setLoadingPerformance] = useState(false);
   const [loadingWeather, setLoadingWeather] = useState(false);
+  const [modelLab, setModelLab] = useState<ModelLab | null>(null);
+  const [loadingModelLab, setLoadingModelLab] = useState(false);
   const [teamAnalytics, setTeamAnalytics] = useState<TeamAnalytics | null>(null);
   const [analyticsTeamId, setAnalyticsTeamId] = useState<number | null>(null);
   const [awayTeam, setAwayTeam] = useState("");
@@ -374,6 +388,15 @@ function App() {
     catch(requestError){ setError(errorMessage(requestError,"Could not load weather intelligence.")); } finally { setLoadingWeather(false); }
   }
 
+
+  async function loadModelLab(force = false) {
+    setActivePage("Model Lab");
+    if (modelLab && !force) return;
+    setLoadingModelLab(true); setError("");
+    try { const response = await fetch(`${API_URL}/model-lab`); const payload = await response.json(); if(!response.ok) throw new Error(payload.detail ?? "Model Lab failed."); setModelLab(payload as ModelLab); }
+    catch(requestError){ setError(errorMessage(requestError,"Could not load Model Lab.")); } finally { setLoadingModelLab(false); }
+  }
+
   async function loadHistory(force = false) {
     setActivePage("Prediction History");
     if (history.length > 0 && !force) return;
@@ -433,6 +456,7 @@ function App() {
     else if (page === "Power Rankings") void loadRankings();
     else if (page === "Model Performance") void loadPerformance();
     else if (page === "Weather Center") void loadWeather();
+    else if (page === "Model Lab") void loadModelLab();
     else if (page === "Prediction History") void loadHistory();
     else setActivePage(page);
   }
@@ -473,7 +497,7 @@ function App() {
         <header className="topbar">
           <div className="topbar-title"><button className="menu-button" aria-label="Open navigation" type="button" onClick={() => setSidebarOpen(true)}>☰</button><div><p className="eyebrow">STRIKERS COMMAND CENTER</p><h2>{activePage}</h2></div></div>
           <div className="topbar-actions">
-            <span className="season-badge">Sprint 8–9</span>
+            <span className="season-badge">Sprint 10–12</span>
             <div className={`api-indicator ${backendOnline ? "online" : ""}`}><span />API</div>
             <button className="profile-button" type="button">JH</button>
           </div>
@@ -487,6 +511,7 @@ function App() {
         {activePage === "Power Rankings" && renderRankings()}
         {activePage === "Model Performance" && renderPerformance()}
         {activePage === "Weather Center" && renderWeather()}
+        {activePage === "Model Lab" && renderModelLab()}
         {activePage === "Prediction History" && renderHistory()}
         {activePage === "Team Analytics" && renderTeamAnalytics()}
       </main>
@@ -500,7 +525,7 @@ function App() {
           <div>
             <p className="eyebrow">LIVE MLB COMMAND CENTER</p>
             <h3>Today’s slate, powered by your model.</h3>
-            <p>Browse games, probable pitchers, and launch Prediction Engine 4.0 with one click.</p>
+            <p>Browse games, probable pitchers, and launch the explainable Prediction Engine 7.0 with one click.</p>
           </div>
           <div className="hero-actions">
             <label className="date-control">Slate date
@@ -544,7 +569,7 @@ function App() {
     return (
       <>
         <section className="predictor-header">
-          <div><p className="eyebrow">PREDICTION ENGINE 4.0</p><h3>Matchup Predictor</h3><p>Choose any two teams or launch a game from the dashboard.</p></div>
+          <div><p className="eyebrow">PREDICTION ENGINE 7.0</p><h3>Matchup Predictor</h3><p>Choose any two teams or launch a game from the dashboard.</p></div>
           <div className={`connection-pill ${backendOnline ? "online" : ""}`}><span />{backendOnline ? "Backend connected" : "Backend offline"}</div>
         </section>
 
@@ -760,6 +785,18 @@ function App() {
     {loadingWeather ? <LoadingCard text="Loading ballpark forecasts…"/> : weatherGames.length===0 ? <EmptyState title="No weather games found" text="Choose a date with scheduled MLB games."/> : <section className="weather-grid">{weatherGames.map(game=><article className="panel weather-card" key={game.game_pk}><div className="weather-top"><div><span>{game.away.name} at {game.home.name}</span><h3>{game.venue ?? 'Venue TBD'}</h3></div><span className={`weather-impact impact-${game.weather.impact.toLowerCase().replace(' ','-')}`}>{game.weather.impact}</span></div>{game.weather.indoor ? <div className="indoor-weather">⌂ Climate controlled</div> : game.weather.available ? <div className="weather-metrics"><div><span>Temperature</span><strong>{game.weather.temperature_f}°F</strong></div><div><span>Wind</span><strong>{game.weather.wind_mph} mph</strong></div><div><span>Rain</span><strong>{game.weather.precipitation_probability}%</strong></div><div><span>Gusts</span><strong>{game.weather.gust_mph} mph</strong></div></div> : <p>Forecast unavailable.</p>}<p className="weather-summary">{game.weather.summary}</p><button className="secondary-button full-width" type="button" onClick={()=>void runPrediction(game.away.name,game.home.name)}>Analyze Matchup</button></article>)}</section>}</>;
   }
 
+
+  function renderModelLab() {
+    return <>
+      <section className="section-heading bets-heading"><div><p className="eyebrow">MODEL TRANSPARENCY</p><h3>Model Lab</h3><p>See what drives Strikers, how it is performing, and where its limits are.</p></div><button className="secondary-button" type="button" onClick={() => void loadModelLab(true)}>Refresh Metrics</button></section>
+      {loadingModelLab ? <LoadingCard text="Loading model architecture…" /> : !modelLab ? <EmptyState title="Model Lab unavailable" text="Start the backend and refresh this page." /> : <>
+        <section className="stats-grid"><StatCard label="Engine" value="7.0" note={modelLab.architecture} positive/><StatCard label="Games evaluated" value={`${modelLab.games_evaluated}`} note={modelLab.calibration}/><StatCard label="Accuracy" value={`${modelLab.accuracy.toFixed(1)}%`} note="Automatically graded predictions" positive={modelLab.accuracy>=55}/><StatCard label="ROI" value={`${modelLab.roi>=0?'+':''}${modelLab.roi.toFixed(1)}%`} note={`${modelLab.units>=0?'+':''}${modelLab.units.toFixed(2)} units`} positive={modelLab.roi>=0}/></section>
+        <section className="model-lab-grid"><article className="panel"><p className="eyebrow">CONFIGURED INFLUENCE</p><h3>Feature importance</h3><p className="muted">Transparent configured weights used by the explanation layer.</p><div className="feature-list">{modelLab.features.map(feature=><div className="feature-row" key={feature.name}><div><strong>{feature.name}</strong><span>{feature.description}</span></div><b>{feature.importance}%</b><div className="feature-track"><i style={{width:`${feature.importance*3.2}%`}}/></div></div>)}</div></article>
+        <article className="panel"><p className="eyebrow">MODEL CARD</p><h3>{modelLab.status}</h3><div className="model-card-details"><div><span>Architecture</span><strong>{modelLab.architecture}</strong></div><div><span>Calibration</span><strong>{modelLab.calibration}</strong></div><div><span>Output</span><strong>Probabilities + factor reports</strong></div></div><p className="eyebrow model-limit-title">KNOWN LIMITATIONS</p><div className="limitation-list">{modelLab.limitations.map(item=><div key={item}><span>!</span><p>{item}</p></div>)}</div></article></section>
+      </>}
+    </>;
+  }
+
   function renderHistory() {
     return (
       <>
@@ -851,6 +888,12 @@ function GameIntelligence({ result }: { result: PredictionResponse }) {
           <small>{insight.edge_points.toFixed(1)}-point edge</small>
         </div>
       </div>
+
+      <div className="risk-strip"><div><span>Model grade</span><strong>{insight.grade}</strong></div><div><span>Risk</span><strong>{insight.risk.level}</strong></div><div><span>Volatility</span><strong>{insight.risk.volatility}/100</strong></div><div><span>Upset chance</span><strong>{insight.risk.upset_chance.toFixed(1)}%</strong></div></div>
+
+      <section className="factor-breakdown"><div className="factor-title"><div><p className="eyebrow">FACTOR BREAKDOWN</p><h3>How each input moves the matchup</h3></div><span>{insight.model_version}</span></div>{insight.factors.map(factor => <div className="factor-row" key={factor.name}><div><strong>{factor.name}</strong><span>{factor.detail}</span></div><div className="factor-score"><b>{factor.favored_team}</b><strong>{factor.available ? `${factor.strength.toFixed(1)} pts` : "N/A"}</strong></div></div>)}</section>
+
+      <div className="game-report"><p className="eyebrow">AUTOMATED GAME REPORT</p><p>{insight.game_report}</p></div>
 
       <div className="intelligence-columns">
         <IntelligenceList

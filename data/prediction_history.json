@@ -1,51 +1,209 @@
 [
   {
-    "id": "7114f8ca-04c6-412c-aad1-012fcf043e75",
-    "created_at": "2026-07-18T07:28:04.181672+00:00",
-    "away_team": "Baltimore Orioles",
-    "home_team": "Houston Astros",
-    "winner": "Baltimore Orioles",
-    "away_probability": 52.9657302025588,
-    "home_probability": 47.0342697974412,
-    "confidence": "LOW",
-    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "id": "765c9b9f-188f-40f7-a250-3a7b0322462a",
+    "created_at": "2026-07-19T03:14:29.015658+00:00",
+    "away_team": "Washington Nationals",
+    "home_team": "Athletics",
+    "winner": "Washington Nationals",
+    "away_probability": 61.66446581561362,
+    "home_probability": 38.33553418438638,
+    "confidence": "MEDIUM-HIGH",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
     "projected_score": {
-      "away": 53.48909435595152,
-      "home": 46.51090564404848
+      "away": 63.72290095954544,
+      "home": 36.277099040454566
     },
     "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
       "Team ERA",
-      "Team WHIP",
-      "Recent record",
-      "Recent run differential",
-      "Starter walk rate"
+      "Team WHIP"
     ],
-    "away_logo": "https://www.mlbstatic.com/team-logos/110.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/117.svg"
+    "away_logo": "https://www.mlbstatic.com/team-logos/120.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/133.svg"
   },
   {
-    "id": "231bd984-f78e-4a60-a537-24329fa39b45",
-    "created_at": "2026-07-18T07:27:59.855523+00:00",
-    "away_team": "Baltimore Orioles",
-    "home_team": "Houston Astros",
-    "winner": "Baltimore Orioles",
-    "away_probability": 52.9657302025588,
-    "home_probability": 47.0342697974412,
+    "id": "44f0f9c0-4df0-44fc-98f3-2834e972d011",
+    "created_at": "2026-07-18T17:50:29.412379+00:00",
+    "away_team": "Pittsburgh Pirates",
+    "home_team": "Cleveland Guardians",
+    "winner": "Pittsburgh Pirates",
+    "away_probability": 56.05348573711357,
+    "home_probability": 43.94651426288643,
+    "confidence": "MEDIUM",
+    "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
+    "projected_score": {
+      "away": 57.12174792601596,
+      "home": 42.87825207398404
+    },
+    "reasons": [
+      "OPS",
+      "Runs per game",
+      "Recent record",
+      "Recent run differential",
+      "Starter WHIP",
+      "Starter walk rate"
+    ],
+    "away_logo": "https://www.mlbstatic.com/team-logos/134.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/114.svg",
+    "actual": {
+      "winner": "Pittsburgh Pirates",
+      "away_score": 7,
+      "home_score": 1
+    },
+    "result": "win",
+    "graded_at": "2026-07-18T19:46:40.508582Z"
+  },
+  {
+    "id": "17761283-9082-4882-8b17-b8ba0a558329",
+    "created_at": "2026-07-18T08:00:11.624649+00:00",
+    "away_team": "Washington Nationals",
+    "home_team": "Athletics",
+    "winner": "Washington Nationals",
+    "away_probability": 63.697857568599375,
+    "home_probability": 36.302142431400625,
+    "confidence": "MEDIUM-HIGH",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 66.11512655129337,
+      "home": 33.884873448706614
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP"
+    ],
+    "away_logo": "https://www.mlbstatic.com/team-logos/120.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/133.svg"
+  },
+  {
+    "id": "ecd9f875-859a-4d47-ac37-708ccf5051c6",
+    "created_at": "2026-07-18T07:58:57.025753+00:00",
+    "away_team": "Pittsburgh Pirates",
+    "home_team": "Cleveland Guardians",
+    "winner": "Pittsburgh Pirates",
+    "away_probability": 54.39233072755214,
+    "home_probability": 45.60766927244786,
     "confidence": "LOW",
     "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
     "projected_score": {
-      "away": 53.48909435595152,
-      "home": 46.51090564404848
+      "away": 55.16744791476722,
+      "home": 44.832552085232784
     },
     "reasons": [
-      "Team ERA",
-      "Team WHIP",
+      "OPS",
+      "Runs per game",
+      "Recent record",
+      "Recent run differential"
+    ],
+    "away_logo": "https://www.mlbstatic.com/team-logos/134.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/114.svg",
+    "actual": {
+      "winner": "Pittsburgh Pirates",
+      "away_score": 7,
+      "home_score": 1
+    },
+    "result": "win",
+    "graded_at": "2026-07-18T19:46:40.508610Z"
+  },
+  {
+    "id": "1178567e-1b76-4b9c-bc02-2c3cd90a9b3e",
+    "created_at": "2026-07-18T07:47:01.559905+00:00",
+    "away_team": "Chicago White Sox",
+    "home_team": "Toronto Blue Jays",
+    "winner": "Chicago White Sox",
+    "away_probability": 65.35281665989392,
+    "home_probability": 34.64718334010608,
+    "confidence": "HIGH",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 68.06213724693401,
+      "home": 31.937862753065975
+    },
+    "reasons": [
+      "Season record",
+      "OPS",
+      "Runs per game",
       "Recent record",
       "Recent run differential",
-      "Starter walk rate"
+      "Starter ERA"
     ],
-    "away_logo": "https://www.mlbstatic.com/team-logos/110.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/117.svg"
+    "away_logo": "https://www.mlbstatic.com/team-logos/145.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/141.svg",
+    "actual": {
+      "winner": "Toronto Blue Jays",
+      "away_score": 0,
+      "home_score": 1
+    },
+    "result": "loss",
+    "graded_at": "2026-07-18T22:59:40.568610Z"
+  },
+  {
+    "id": "9611301f-8f2b-4819-ae9b-469b244bc9c2",
+    "created_at": "2026-07-18T07:46:23.476228+00:00",
+    "away_team": "Texas Rangers",
+    "home_team": "Atlanta Braves",
+    "winner": "Atlanta Braves",
+    "away_probability": 31.087871371035874,
+    "home_probability": 68.91212862896413,
+    "confidence": "HIGH",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 27.750436907101026,
+      "home": 72.24956309289897
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP"
+    ],
+    "away_logo": "https://www.mlbstatic.com/team-logos/140.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/144.svg",
+    "actual": {
+      "winner": "Texas Rangers",
+      "away_score": 7,
+      "home_score": 6
+    },
+    "result": "loss",
+    "graded_at": "2026-07-19T02:39:38.987904Z"
+  },
+  {
+    "id": "2d67eb4e-7488-4fa0-9be0-e3014d907009",
+    "created_at": "2026-07-18T07:45:59.663110+00:00",
+    "away_team": "Pittsburgh Pirates",
+    "home_team": "Cleveland Guardians",
+    "winner": "Pittsburgh Pirates",
+    "away_probability": 54.39233072755214,
+    "home_probability": 45.60766927244786,
+    "confidence": "LOW",
+    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "projected_score": {
+      "away": 55.16744791476722,
+      "home": 44.832552085232784
+    },
+    "reasons": [
+      "OPS",
+      "Runs per game",
+      "Recent record",
+      "Recent run differential"
+    ],
+    "away_logo": "https://www.mlbstatic.com/team-logos/134.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/114.svg",
+    "actual": {
+      "winner": "Pittsburgh Pirates",
+      "away_score": 7,
+      "home_score": 1
+    },
+    "result": "win",
+    "graded_at": "2026-07-18T19:46:40.508624Z"
   },
   {
     "id": "ae6e1684-1848-49a8-9712-a6a8b1cb03d8",
@@ -68,7 +226,14 @@
       "Recent run differential"
     ],
     "away_logo": "https://www.mlbstatic.com/team-logos/134.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/114.svg"
+    "home_logo": "https://www.mlbstatic.com/team-logos/114.svg",
+    "actual": {
+      "winner": "Pittsburgh Pirates",
+      "away_score": 7,
+      "home_score": 1
+    },
+    "result": "win",
+    "graded_at": "2026-07-18T19:46:40.508630Z"
   },
   {
     "id": "5d305b92-fcac-4c88-83ba-8f12c392840f",
@@ -93,7 +258,14 @@
       "Starter ERA"
     ],
     "away_logo": "https://www.mlbstatic.com/team-logos/145.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/141.svg"
+    "home_logo": "https://www.mlbstatic.com/team-logos/141.svg",
+    "actual": {
+      "winner": "Toronto Blue Jays",
+      "away_score": 0,
+      "home_score": 1
+    },
+    "result": "loss",
+    "graded_at": "2026-07-18T22:59:40.568626Z"
   },
   {
     "id": "8db273ad-991e-4621-a534-f90395f19179",
@@ -117,7 +289,14 @@
       "Starter walk rate"
     ],
     "away_logo": "https://www.mlbstatic.com/team-logos/110.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/117.svg"
+    "home_logo": "https://www.mlbstatic.com/team-logos/117.svg",
+    "actual": {
+      "winner": "Baltimore Orioles",
+      "away_score": 4,
+      "home_score": 2
+    },
+    "result": "win",
+    "graded_at": "2026-07-19T02:39:38.987915Z"
   },
   {
     "id": "dbede236-fbdb-4830-9af8-6db25c67d8ec",
@@ -141,7 +320,14 @@
       "Starter walk rate"
     ],
     "away_logo": "https://www.mlbstatic.com/team-logos/110.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/117.svg"
+    "home_logo": "https://www.mlbstatic.com/team-logos/117.svg",
+    "actual": {
+      "winner": "Baltimore Orioles",
+      "away_score": 4,
+      "home_score": 2
+    },
+    "result": "win",
+    "graded_at": "2026-07-19T02:39:38.987922Z"
   },
   {
     "id": "f94b11fd-3403-41d6-8134-85fc032f7187",
@@ -191,7 +377,14 @@
       "Team WHIP"
     ],
     "away_logo": "https://www.mlbstatic.com/team-logos/140.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/144.svg"
+    "home_logo": "https://www.mlbstatic.com/team-logos/144.svg",
+    "actual": {
+      "winner": "Texas Rangers",
+      "away_score": 7,
+      "home_score": 6
+    },
+    "result": "loss",
+    "graded_at": "2026-07-19T02:39:38.987934Z"
   },
   {
     "id": "419f0b99-b115-4911-b02b-fab5ff258353",
