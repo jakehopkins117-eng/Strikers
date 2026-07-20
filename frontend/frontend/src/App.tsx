@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
-import { PredictionIntelligence } from "./components/PredictionIntelligence";
-import { BettingIntelligence } from "./components/BettingIntelligence";
 
 type Page =
   | "Dashboard"
@@ -54,7 +52,7 @@ type Pitcher = {
   innings: number | null;
 };
 
-export type PredictionResponse = {
+type PredictionResponse = {
   matchup: { away: string; home: string };
   prediction: {
     away_probability: number;
@@ -70,11 +68,6 @@ export type PredictionResponse = {
   home_team: Record<string, number | string | null>;
   away_pitcher: Pitcher;
   home_pitcher: Pitcher;
-  betting_intelligence?: {
-    market: string; status: string; disclaimer: string; best_value: null | Record<string, unknown>;
-    sides: { team:string; model_probability:number; odds:number|null; implied_probability:number|null; edge_points:number|null; fair_odds:number; expected_value:number|null; rating:string; recommendation:string }[];
-  };
-  ml_second_opinion?: { available:boolean; status:string; winner:string|null; home_probability:number|null; away_probability:number|null; agreement:boolean|null; message?:string };
   intelligence: {
     headline: string;
     summary: string;
@@ -94,7 +87,7 @@ export type PredictionResponse = {
     swing_factor: string;
     model_version: string;
     factors: { name:string; home_points:number; away_points:number; favored_team:string; strength:number; detail:string; available:boolean }[];
-    prediction_dna?: {
+    prediction_dna: {
       winner: string; alignment: number; conflict: number; conviction: number; balance_label: string;
       dominant_driver: string; counterweight: string; summary: string;
       components: { name:string; favored_team:string; strength:number; share:number; role:"support"|"risk"|"neutral"; impact:string; detail:string }[];
@@ -157,8 +150,6 @@ type ModelLab = {
 };
 
 type WeatherGame = Game & { weather: { indoor:boolean; available:boolean; temperature_f?:number; precipitation_probability?:number; wind_mph?:number; gust_mph?:number; impact:string; impact_score:number; summary:string } };
-
-type DashboardSummary = { database: { total:number; graded:number; pending:number; wins:number; losses:number; accuracy:number; recent:HistoryItem[] }; ml:{available:boolean;status:string;trained_rows?:number}; engine:string; release:string };
 
 type HistoryItem = {
   id: string;
@@ -255,11 +246,6 @@ function App() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [error, setError] = useState("");
-  const [awayOdds, setAwayOdds] = useState("");
-  const [homeOdds, setHomeOdds] = useState("");
-  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
-  const [historyTeamFilter, setHistoryTeamFilter] = useState("");
-  const [historyConfidenceFilter, setHistoryConfidenceFilter] = useState("");
 
   const winningProbability = useMemo(() => {
     if (!result) return 0;
@@ -288,9 +274,6 @@ function App() {
         teams: TeamOption[];
       };
       setTeams(teamsPayload.teams);
-
-      const summaryResponse = await fetch(`${API_URL}/dashboard-summary`);
-      if (summaryResponse.ok) setDashboardSummary(await summaryResponse.json() as DashboardSummary);
 
       if (teamsPayload.teams.length >= 2) {
         setAwayTeam(teamsPayload.teams[0].name);
@@ -328,14 +311,12 @@ function App() {
       const response = await fetch(`${API_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ away_team: away, home_team: home, away_odds: awayOdds ? Number(awayOdds) : null, home_odds: homeOdds ? Number(homeOdds) : null }),
+        body: JSON.stringify({ away_team: away, home_team: home }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.detail ?? "Prediction failed.");
       setResult(payload as PredictionResponse);
       setHistory([]);
-      const summaryResponse = await fetch(`${API_URL}/dashboard-summary`);
-      if (summaryResponse.ok) setDashboardSummary(await summaryResponse.json() as DashboardSummary);
     } catch (requestError) {
       setError(errorMessage(requestError, "Could not run prediction."));
     } finally {
@@ -435,10 +416,7 @@ function App() {
     setError("");
 
     try {
-      const params = new URLSearchParams({ limit: "100" });
-      if (historyTeamFilter.trim()) params.set("team", historyTeamFilter.trim());
-      if (historyConfidenceFilter) params.set("confidence", historyConfidenceFilter);
-      const response = await fetch(`${API_URL}/prediction-history?${params.toString()}`);
+      const response = await fetch(`${API_URL}/prediction-history?limit=100`);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.detail ?? "History failed.");
       setHistory(payload.predictions as HistoryItem[]);
@@ -531,7 +509,7 @@ function App() {
         <header className="topbar">
           <div className="topbar-title"><button className="menu-button" aria-label="Open navigation" type="button" onClick={() => setSidebarOpen(true)}>☰</button><div><p className="eyebrow">STRIKERS COMMAND CENTER</p><h2>{activePage}</h2></div></div>
           <div className="topbar-actions">
-            <span className="season-badge">Strikers v3.0</span>
+            <span className="season-badge">Sprint 10–12</span>
             <div className={`api-indicator ${backendOnline ? "online" : ""}`}><span />API</div>
             <button className="profile-button" type="button">JH</button>
           </div>
@@ -582,9 +560,7 @@ function App() {
           <StatCard label="Backend" value={backendOnline ? "Online" : "Offline"} note="FastAPI connection" positive={backendOnline} />
           <StatCard label="Games" value={loadingSchedule ? "…" : `${games.length}`} note={`Scheduled for ${selectedDate}`} />
           <StatCard label="MLB Clubs" value={`${teams.length || 30}`} note="Official team data" />
-          <StatCard label="Predictions" value={`${dashboardSummary?.database.total ?? 0}`} note={`${dashboardSummary?.database.pending ?? 0} awaiting results`} />
-          <StatCard label="Accuracy" value={dashboardSummary?.database.graded ? `${dashboardSummary.database.accuracy.toFixed(1)}%` : "—"} note={`${dashboardSummary?.database.graded ?? 0} graded predictions`} positive={(dashboardSummary?.database.accuracy ?? 0) >= 55} />
-          <StatCard label="ML Layer" value={dashboardSummary?.ml.available ? "Active" : "Collecting"} note={dashboardSummary?.ml.status ?? "Foundation ready"} positive={dashboardSummary?.ml.available ?? false} />
+          <StatCard label="Latest Pick" value={result ? `${winningProbability.toFixed(1)}%` : "—"} note={result?.prediction.winner ?? "Select a game below"} />
         </section>
 
         <section className="section-heading">
@@ -613,7 +589,6 @@ function App() {
           <TeamSelect label="Away team" value={awayTeam} teams={teams} onChange={setAwayTeam} />
           <div className="versus-orb">AT</div>
           <TeamSelect label="Home team" value={homeTeam} teams={teams} onChange={setHomeTeam} />
-          <div className="moneyline-inputs"><label>Away odds<input type="number" placeholder="-110" value={awayOdds} onChange={(e)=>setAwayOdds(e.target.value)} /></label><label>Home odds<input type="number" placeholder="+120" value={homeOdds} onChange={(e)=>setHomeOdds(e.target.value)} /></label></div>
           <button className="primary-button" type="button" disabled={loadingPrediction || !awayTeam || !homeTeam} onClick={() => void runPrediction(awayTeam, homeTeam)}>
             {loadingPrediction ? "Analyzing…" : "Run Prediction"}
           </button>
@@ -639,9 +614,7 @@ function App() {
                 {result.prediction.reasons.map((reason) => <div className="reason-item" key={reason}><span>✓</span><strong>{reason}</strong></div>)}
               </div>
             </article>
-            <BettingIntelligence result={result} />
-            <PredictionIntelligence result={result} />
-            <article className="panel ml-opinion-card"><p className="eyebrow">ML SECOND OPINION</p><h3>{result.ml_second_opinion?.available ? result.ml_second_opinion.winner : "Collecting training data"}</h3><p>{result.ml_second_opinion?.available ? `${result.ml_second_opinion.agreement ? "Agrees" : "Disagrees"} with the core engine.` : (result.ml_second_opinion?.message ?? "The core engine remains fully active until enough completed predictions exist.")}</p></article>
+            <GameIntelligence result={result} />
             <TeamComparison result={result} />
             <PitcherComparison result={result} />
           </section>
@@ -841,7 +814,7 @@ function App() {
       <>
         <section className="section-heading bets-heading">
           <div><p className="eyebrow">SAVED MODEL OUTPUT</p><h3>Prediction History</h3><p>Every manually generated prediction is stored automatically.</p></div>
-          <div className="history-actions history-filter-bar"><input placeholder="Filter team" value={historyTeamFilter} onChange={(e)=>setHistoryTeamFilter(e.target.value)} /><select value={historyConfidenceFilter} onChange={(e)=>setHistoryConfidenceFilter(e.target.value)}><option value="">All confidence</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option></select><button className="secondary-button" type="button" onClick={() => { setHistory([]); void loadHistory(true); }}>Apply Filters</button>
+          <div className="history-actions">
             <button className="secondary-button" type="button" onClick={() => void loadHistory(true)}>Refresh</button>
             <button className="danger-button" type="button" onClick={() => void clearHistory()}>Clear History</button>
           </div>
@@ -909,6 +882,173 @@ function ProbabilityBar({ label, value }: { label: string; value: number }) {
   return <div className="probability-row"><div><strong>{label}</strong><span>{value.toFixed(1)}%</span></div><div className="probability-track"><div className="probability-fill" style={{ width: `${value}%` }} /></div></div>;
 }
 
+
+function GameIntelligence({ result }: { result: PredictionResponse }) {
+  const insight = result.intelligence;
+  const maxFactor = Math.max(...insight.factors.map((factor) => factor.strength), 1);
+
+  return (
+    <article className="panel intelligence-card intelligence-v2">
+      <header className="intelligence-heading intelligence-hero">
+        <div>
+          <p className="eyebrow">STRIKERS GAME INTELLIGENCE</p>
+          <h3>{insight.headline}</h3>
+          <p className="executive-summary">{insight.summary}</p>
+        </div>
+        <div className={`intelligence-grade grade-${insight.grade.toLowerCase().replace(" ", "-")}`}>
+          <span>{insight.recommended_action}</span>
+          <strong>{insight.grade}</strong>
+          <small>{insight.edge_points.toFixed(1)}-point model edge</small>
+        </div>
+      </header>
+
+      <div className="risk-strip intelligence-metrics">
+        <div><span>Model grade</span><strong>{insight.grade}</strong></div>
+        <div><span>Risk profile</span><strong>{insight.risk.level}</strong></div>
+        <div><span>Volatility</span><strong>{insight.risk.volatility}/100</strong></div>
+        <div><span>Upset probability</span><strong>{insight.risk.upset_chance.toFixed(1)}%</strong></div>
+      </div>
+
+      <section className="overview-grid">
+        <article className="overview-card overview-primary">
+          <p className="eyebrow">PROJECTED GAME SCRIPT</p>
+          <h4>How Strikers expects the game to unfold</h4>
+          <p>{insight.game_script}</p>
+        </article>
+        <article className="overview-card">
+          <p className="eyebrow">KEY MATCHUP</p>
+          <h4>Matchup to watch</h4>
+          <p>{insight.key_matchup}</p>
+        </article>
+        <article className="overview-card">
+          <p className="eyebrow">CONFIDENCE CONTEXT</p>
+          <h4>Why the grade lands here</h4>
+          <p>{insight.confidence_explanation}</p>
+        </article>
+        <article className="overview-card overview-concern">
+          <p className="eyebrow">PRIMARY CONCERN</p>
+          <h4>The clearest path to an upset</h4>
+          <p>{insight.primary_concern}</p>
+        </article>
+        <article className="overview-card overview-warning">
+          <p className="eyebrow">SWING FACTOR</p>
+          <h4>What could change the outlook</h4>
+          <p>{insight.swing_factor}</p>
+        </article>
+      </section>
+
+      <PredictionDNA insight={insight} />
+
+      <section className="factor-breakdown factor-visual">
+        <div className="factor-title">
+          <div><p className="eyebrow">PREDICTION DRIVERS</p><h3>Where the matchup edge comes from</h3></div>
+          <span>{insight.model_version}</span>
+        </div>
+        {insight.factors.map((factor) => (
+          <div className="factor-row factor-row-v2" key={factor.name}>
+            <div className="factor-copy">
+              <div className="factor-label"><strong>{factor.name}</strong><b>{factor.favored_team}</b></div>
+              <span>{factor.detail}</span>
+              <div className="factor-track"><i style={{ width: factor.available ? `${Math.max(7, (factor.strength / maxFactor) * 100)}%` : "0%" }} /></div>
+            </div>
+            <div className="factor-score"><strong>{factor.available ? `${factor.strength.toFixed(1)} pts` : "N/A"}</strong></div>
+          </div>
+        ))}
+      </section>
+
+      <div className="intelligence-columns">
+        <IntelligenceList title="Why the pick works" icon="↗" items={insight.advantages} emptyText="No single metric dominates this matchup." tone="positive" />
+        <IntelligenceList title="Primary concerns" icon="!" items={insight.risks} emptyText="No major statistical warning was detected." tone="warning" />
+        <IntelligenceList title="Before first pitch" icon="◎" items={insight.watch_items} emptyText="No additional watch items." tone="neutral" />
+      </div>
+
+      <div className="game-report editorial-note"><p className="eyebrow">ANALYST NOTE</p><p>{insight.game_report}</p></div>
+      <div className="bottom-line-note"><p className="eyebrow">BOTTOM LINE</p><p>{insight.bottom_line}</p></div>
+      <p className="intelligence-disclaimer">{insight.disclaimer}</p>
+    </article>
+  );
+}
+
+function PredictionDNA({ insight }: { insight: PredictionResponse["intelligence"] }) {
+  const dna = insight.prediction_dna;
+  return (
+    <section className="prediction-dna">
+      <div className="dna-header">
+        <div>
+          <p className="eyebrow">PREDICTION DNA</p>
+          <h3>How the model built this pick</h3>
+          <p>{dna.summary}</p>
+        </div>
+        <div className="dna-conviction" aria-label={`${dna.conviction} out of 100 conviction`}>
+          <div className="dna-ring" style={{ "--dna-score": `${dna.conviction * 3.6}deg` } as React.CSSProperties}>
+            <span>{dna.conviction}</span><small>/100</small>
+          </div>
+          <strong>{dna.balance_label} signal</strong>
+        </div>
+      </div>
+
+      <div className="dna-split">
+        <div><span>Signals supporting {dna.winner}</span><strong>{dna.alignment.toFixed(0)}%</strong></div>
+        <div><span>Opposing signals</span><strong>{dna.conflict.toFixed(0)}%</strong></div>
+      </div>
+      <div className="dna-balance-track"><i style={{ width: `${dna.alignment}%` }} /></div>
+
+      <div className="dna-callouts">
+        <div><span>Dominant driver</span><strong>{dna.dominant_driver}</strong></div>
+        <div><span>Largest counterweight</span><strong>{dna.counterweight}</strong></div>
+      </div>
+
+      <div className="dna-components">
+        {dna.components.map((component) => (
+          <article className={`dna-component dna-${component.role}`} key={component.name}>
+            <div className="dna-component-top">
+              <div><span>{component.impact}</span><strong>{component.name}</strong></div>
+              <b>{component.share.toFixed(1)}%</b>
+            </div>
+            <div className="dna-component-track"><i style={{ width: `${Math.max(5, component.share)}%` }} /></div>
+            <p>{component.favored_team === "Even" ? "Even signal" : `Favors ${component.favored_team}`} · {component.detail}</p>
+          </article>
+        ))}
+      </div>
+
+      <details className="dna-flip">
+        <summary>What could flip the pick?</summary>
+        {dna.flip_conditions.map((condition) => <p key={condition}>{condition}</p>)}
+      </details>
+    </section>
+  );
+}
+
+function IntelligenceList({
+  title,
+  icon,
+  items,
+  emptyText,
+  tone,
+}: {
+  title: string;
+  icon: string;
+  items: string[];
+  emptyText: string;
+  tone: "positive" | "warning" | "neutral";
+}) {
+  const displayItems = items.length > 0 ? items : [emptyText];
+
+  return (
+    <section className={`intelligence-list intelligence-${tone}`}>
+      <div className="intelligence-list-title">
+        <span>{icon}</span>
+        <strong>{title}</strong>
+      </div>
+      {displayItems.map((item) => (
+        <div className="intelligence-item" key={item}>
+          <i />
+          <span>{item}</span>
+        </div>
+      ))}
+    </section>
+  );
+}
 
 function TeamComparison({ result }: { result: PredictionResponse }) {
   const away = result.away_team; const home = result.home_team;

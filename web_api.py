@@ -31,6 +31,16 @@ from services.prediction import PredictionEngine
 from services.performance import build_performance, grade_predictions
 from services.weather import weather_for_game
 from services.model_intelligence import build_model_intelligence, model_lab_payload
+from services.betting_intelligence import evaluate_moneyline
+from services.prediction_database import (
+    clear_predictions as clear_sqlite_predictions,
+    initialize_database,
+    import_legacy_history,
+    list_predictions as list_sqlite_predictions,
+    save_prediction as save_sqlite_prediction,
+    summary as database_summary,
+)
+from services.ml_foundation import model_status, second_opinion
 
 
 app = FastAPI(
@@ -55,6 +65,15 @@ HISTORY_LOCK = Lock()
 class PredictionRequest(BaseModel):
     away_team: str = Field(min_length=2, max_length=80)
     home_team: str = Field(min_length=2, max_length=80)
+    away_odds: int | None = Field(default=None, ge=-10000, le=10000)
+    home_odds: int | None = Field(default=None, ge=-10000, le=10000)
+
+
+class BettingIntelligenceRequest(BaseModel):
+    away_team: str = Field(min_length=2, max_length=80)
+    home_team: str = Field(min_length=2, max_length=80)
+    away_odds: int = Field(ge=-10000, le=10000)
+    home_odds: int = Field(ge=-10000, le=10000)
 
 
 class PropAnalysisRequest(BaseModel):
@@ -216,7 +235,7 @@ def _write_history(history: list[dict[str, Any]]) -> None:
         temp_path.replace(HISTORY_PATH)
 
 
-def _save_prediction(payload: dict[str, Any]) -> None:
+def _save_prediction(payload: dict[str, Any]) -> dict[str, Any]:
     prediction = payload["prediction"]
     history_item = {
         "id": str(uuid4()),
@@ -240,6 +259,7 @@ def _save_prediction(payload: dict[str, Any]) -> None:
     history = _read_history()
     history.insert(0, history_item)
     _write_history(history[:250])
+    return history_item
 
 
 
@@ -445,6 +465,8 @@ def _run_prediction(
     home_team: str,
     *,
     save_history: bool,
+    away_odds: int | None = None,
+    home_odds: int | None = None,
 ) -> dict[str, Any]:
     if away_team == home_team:
         raise HTTPException(
@@ -480,9 +502,16 @@ def _run_prediction(
         "home_pitcher": _pitcher_payload(engine.home_pitcher),
     }
     payload["intelligence"] = build_model_intelligence(payload)
+    payload["betting_intelligence"] = evaluate_moneyline(
+        away_team=payload["matchup"]["away"], home_team=payload["matchup"]["home"],
+        away_probability=float(prediction["away_probability"]), home_probability=float(prediction["home_probability"]),
+        away_odds=away_odds, home_odds=home_odds,
+    )
+    payload["ml_second_opinion"] = second_opinion(payload)
 
     if save_history:
-        _save_prediction(payload)
+        history_item = _save_prediction(payload)
+        payload["history_id"] = save_sqlite_prediction(payload, payload["betting_intelligence"], record_id=history_item["id"], created_at=history_item["created_at"])
 
     return payload
 
@@ -665,14 +694,16 @@ def _build_daily_props(target_date: str, limit: int) -> list[dict[str, Any]]:
 def root() -> dict[str, str]:
     return {
         "message": "Strikers API is running.",
-        "engine": "Prediction Engine 4.0",
-        "sprint": "5",
+        "engine": "Prediction Engine 7.5",
+        "release": "3.0",
     }
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "online", "engine": "7.0", "sprint": "10-12"}
+    initialize_database()
+    import_legacy_history(_read_history())
+    return {"status": "online", "engine": "7.5", "release": "3.0"}
 
 
 @app.get("/teams")
@@ -724,10 +755,27 @@ def schedule(
 @app.post("/predict")
 def predict_matchup(request: PredictionRequest) -> dict[str, Any]:
     return _run_prediction(
-        request.away_team,
-        request.home_team,
-        save_history=True,
+        request.away_team, request.home_team, save_history=True,
+        away_odds=request.away_odds, home_odds=request.home_odds,
     )
+
+
+@app.post("/betting-intelligence")
+def betting_intelligence(request: BettingIntelligenceRequest) -> dict[str, Any]:
+    return _run_prediction(
+        request.away_team, request.home_team, save_history=False,
+        away_odds=request.away_odds, home_odds=request.home_odds,
+    )["betting_intelligence"]
+
+
+@app.get("/ml/status")
+def ml_status() -> dict[str, Any]:
+    return model_status()
+
+
+@app.get("/dashboard-summary")
+def dashboard_summary() -> dict[str, Any]:
+    return {"database": database_summary(), "ml": model_status(), "engine": "7.5", "release": "3.0"}
 
 
 @app.get("/best-bets")
@@ -1070,6 +1118,7 @@ def grade_saved_predictions() -> dict[str, Any]:
     graded, changed = grade_predictions(history, schedule)
     if changed:
         _write_history(graded)
+        import_legacy_history(graded)
     return {"graded": changed, "performance": build_performance(graded)}
 
 
@@ -1100,18 +1149,16 @@ def weather_center(game_date: str = Query(default_factory=lambda: date_type.toda
 @app.get("/prediction-history")
 def prediction_history(
     limit: int = Query(default=50, ge=1, le=250),
+    team: str | None = Query(default=None),
+    confidence: str | None = Query(default=None),
+    result: str | None = Query(default=None),
 ) -> dict[str, Any]:
-    history = _read_history()
-    return {
-        "total": len(history),
-        "predictions": history[:limit],
-    }
+    predictions = list_sqlite_predictions(limit=limit, team=team, confidence=confidence, result=result)
+    return {"total": len(predictions), "predictions": predictions, "summary": database_summary()}
 
 
 @app.delete("/prediction-history")
 def clear_prediction_history() -> dict[str, Any]:
     _write_history([])
-    return {
-        "status": "cleared",
-        "message": "Prediction history has been cleared.",
-    }
+    clear_sqlite_predictions()
+    return {"status": "cleared", "message": "Prediction history has been cleared."}

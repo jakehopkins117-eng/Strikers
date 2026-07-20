@@ -311,7 +311,7 @@ def build_model_intelligence(payload: dict[str, Any]) -> dict[str, Any]:
             "upset_chance": upset_chance,
             "confidence": round(winner_probability, 1),
         },
-        "model_version": "7.5-platform-foundation",
+        "model_version": "7.3-prediction-dna",
     }
 
 
