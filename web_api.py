@@ -18,6 +18,8 @@ import json
 from dataclasses import asdict
 from datetime import date as date_type, datetime, timedelta, timezone
 from pathlib import Path
+
+from dotenv import load_dotenv
 from threading import Lock
 from typing import Any
 from uuid import uuid4
@@ -41,11 +43,19 @@ from services.prediction_database import (
     summary as database_summary,
 )
 from services.ml_foundation import model_status, second_opinion
+from services.odds import get_matchup_odds, odds_status
+from services.bet_score import build_sportsbook_intelligence
+from services.lineup_injuries import (
+    get_lineup_intelligence, get_injury_intelligence,
+    apply_lineup_injury_adjustment, build_game_analyst,
+)
 
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 app = FastAPI(
     title="Strikers API",
-    version="10.12.0",
+    version="3.5.0",
     description="Web API for the Strikers MLB prediction platform.",
 )
 
@@ -67,6 +77,8 @@ class PredictionRequest(BaseModel):
     home_team: str = Field(min_length=2, max_length=80)
     away_odds: int | None = Field(default=None, ge=-10000, le=10000)
     home_odds: int | None = Field(default=None, ge=-10000, le=10000)
+    game_pk: int | None = Field(default=None, ge=1)
+    official_date: str | None = None
 
 
 class BettingIntelligenceRequest(BaseModel):
@@ -150,6 +162,59 @@ def _schedule_game_payload(game: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+def _live_game_payload(game: dict[str, Any], saved_by_game: dict[int, dict[str, Any]]) -> dict[str, Any]:
+    payload = _schedule_game_payload(game)
+    linescore = game.get("linescore") or {}
+    offense = linescore.get("offense") or {}
+    defense = linescore.get("defense") or {}
+
+    def person_name(container: dict[str, Any], key: str) -> str | None:
+        item = container.get(key) or {}
+        return item.get("fullName") or item.get("name")
+
+    bases = {
+        "first": bool(offense.get("first")),
+        "second": bool(offense.get("second")),
+        "third": bool(offense.get("third")),
+    }
+    inning = linescore.get("currentInning")
+    inning_ordinal = linescore.get("currentInningOrdinal")
+    inning_state = linescore.get("inningState") or linescore.get("inningHalf")
+    if inning_state and inning_ordinal:
+        inning_label = f"{inning_state} {inning_ordinal}"
+    elif inning:
+        inning_label = f"Inning {inning}"
+    else:
+        inning_label = payload["status"]["detailed"]
+
+    prediction = saved_by_game.get(payload.get("game_pk"))
+    live_probability = None
+    if prediction and payload["status"]["abstract"] == "Live":
+        away_score = payload["away"].get("score") or 0
+        home_score = payload["home"].get("score") or 0
+        pre_home = float(prediction.get("home_probability") or 50.0)
+        score_shift = max(-24.0, min(24.0, (home_score - away_score) * 7.0))
+        inning_factor = min(1.0, float(inning or 1) / 9.0)
+        home_live = max(2.0, min(98.0, pre_home + score_shift * (0.45 + inning_factor)))
+        live_probability = {"home": round(home_live, 1), "away": round(100.0 - home_live, 1), "method": "score-and-inning estimate"}
+
+    payload.update({
+        "inning": inning,
+        "inning_label": inning_label,
+        "count": {
+            "balls": linescore.get("balls", 0),
+            "strikes": linescore.get("strikes", 0),
+            "outs": linescore.get("outs", 0),
+        },
+        "bases": bases,
+        "current_batter": person_name(offense, "batter"),
+        "current_pitcher": person_name(defense, "pitcher"),
+        "prediction": prediction,
+        "live_probability": live_probability,
+    })
+    return payload
+
 def _team_stats_payload(team_data: Any) -> dict[str, Any]:
     if team_data is None:
         return {}
@@ -211,6 +276,24 @@ def _pitcher_payload(pitcher: Any) -> dict[str, Any]:
     }
 
 
+
+
+def _bullpen_payload(bullpen: Any) -> dict[str, Any]:
+    if bullpen is None:
+        return {"available": False, "availability_score": 75.0, "fatigue_level": "Unknown", "relievers": []}
+    try:
+        return bullpen.to_dict()
+    except AttributeError:
+        return {
+            "team_id": getattr(bullpen, "team_id", 0),
+            "team_name": getattr(bullpen, "team_name", "Unknown Team"),
+            "availability_score": getattr(bullpen, "availability_score", 75.0),
+            "fatigue_level": getattr(bullpen, "fatigue_level", "Unknown"),
+            "available": getattr(bullpen, "available", False),
+            "relievers": [],
+        }
+
+
 def _read_history() -> list[dict[str, Any]]:
     with HISTORY_LOCK:
         if not HISTORY_PATH.exists():
@@ -221,7 +304,8 @@ def _read_history() -> list[dict[str, Any]]:
         except (json.JSONDecodeError, OSError):
             return []
 
-        return payload if isinstance(payload, list) else []
+        history = payload if isinstance(payload, list) else []
+        return _dedupe_history(history) if "_dedupe_history" in globals() else history
 
 
 def _write_history(history: list[dict[str, Any]]) -> None:
@@ -235,11 +319,35 @@ def _write_history(history: list[dict[str, Any]]) -> None:
         temp_path.replace(HISTORY_PATH)
 
 
+def _history_key(item: dict[str, Any]) -> tuple[Any, ...]:
+    game_pk = item.get("game_pk")
+    if game_pk is not None:
+        return ("game_pk", int(game_pk))
+    date_key = item.get("official_date") or str(item.get("created_at", ""))[:10]
+    return ("legacy", item.get("away_team"), item.get("home_team"), date_key)
+
+
+def _dedupe_history(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep only the newest prediction for each MLB game."""
+    ordered = sorted(history, key=lambda item: str(item.get("created_at", "")), reverse=True)
+    seen: set[tuple[Any, ...]] = set()
+    unique: list[dict[str, Any]] = []
+    for item in ordered:
+        key = _history_key(item)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(item)
+    return unique
+
+
 def _save_prediction(payload: dict[str, Any]) -> dict[str, Any]:
     prediction = payload["prediction"]
     history_item = {
         "id": str(uuid4()),
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "game_pk": payload.get("game_pk"),
+        "official_date": payload.get("official_date"),
         "away_team": payload["matchup"]["away"],
         "home_team": payload["matchup"]["home"],
         "winner": prediction["winner"],
@@ -247,19 +355,15 @@ def _save_prediction(payload: dict[str, Any]) -> dict[str, Any]:
         "home_probability": float(prediction["home_probability"]),
         "confidence": prediction["confidence"],
         "confidence_stars": prediction["confidence_stars"],
-        "projected_score": {
-            "away": prediction.get("away_score"),
-            "home": prediction.get("home_score"),
-        },
+        "projected_score": {"away": prediction.get("away_score"), "home": prediction.get("home_score")},
         "reasons": prediction.get("reasons", []),
         "away_logo": payload["away_team"].get("logo"),
         "home_logo": payload["home_team"].get("logo"),
     }
-
-    history = _read_history()
-    history.insert(0, history_item)
+    history = _dedupe_history([history_item, *_read_history()])
+    saved = next(item for item in history if _history_key(item) == _history_key(history_item))
     _write_history(history[:250])
-    return history_item
+    return saved
 
 
 
@@ -467,6 +571,8 @@ def _run_prediction(
     save_history: bool,
     away_odds: int | None = None,
     home_odds: int | None = None,
+    game_pk: int | None = None,
+    official_date: str | None = None,
 ) -> dict[str, Any]:
     if away_team == home_team:
         raise HTTPException(
@@ -490,23 +596,40 @@ def _run_prediction(
 
     prediction = asdict(result)
 
+    matchup = {
+        "away": getattr(engine.away_data, "name", away_team),
+        "home": getattr(engine.home_data, "name", home_team),
+    }
+    away_id = int(getattr(engine.away_data, "team_id", 0) or engine.away_team.get("id", 0))
+    home_id = int(getattr(engine.home_data, "team_id", 0) or engine.home_team.get("id", 0))
+    lineup_intelligence = get_lineup_intelligence(away_id, home_id, game_pk, official_date)
+    injury_intelligence = get_injury_intelligence(away_id, home_id)
+
     payload = {
-        "matchup": {
-            "away": getattr(engine.away_data, "name", away_team),
-            "home": getattr(engine.home_data, "name", home_team),
-        },
+        "game_pk": game_pk or lineup_intelligence.get("game_pk"),
+        "official_date": official_date,
+        "matchup": matchup,
         "prediction": prediction,
         "away_team": _team_stats_payload(engine.away_data),
         "home_team": _team_stats_payload(engine.home_data),
         "away_pitcher": _pitcher_payload(engine.away_pitcher),
         "home_pitcher": _pitcher_payload(engine.home_pitcher),
+        "away_bullpen": _bullpen_payload(engine.away_bullpen),
+        "home_bullpen": _bullpen_payload(engine.home_bullpen),
+        "lineup_intelligence": lineup_intelligence,
+        "injury_intelligence": injury_intelligence,
     }
+    adjustments = apply_lineup_injury_adjustment(prediction, matchup, lineup_intelligence, injury_intelligence)
+    payload["prediction_adjustments"] = adjustments
     payload["intelligence"] = build_model_intelligence(payload)
+    payload["game_analyst"] = build_game_analyst(payload, adjustments)
     payload["betting_intelligence"] = evaluate_moneyline(
         away_team=payload["matchup"]["away"], home_team=payload["matchup"]["home"],
         away_probability=float(prediction["away_probability"]), home_probability=float(prediction["home_probability"]),
         away_odds=away_odds, home_odds=home_odds,
     )
+    sportsbook_market = get_matchup_odds(payload["matchup"]["away"], payload["matchup"]["home"])
+    payload["sportsbook_intelligence"] = build_sportsbook_intelligence(payload, sportsbook_market)
     payload["ml_second_opinion"] = second_opinion(payload)
 
     if save_history:
@@ -695,7 +818,7 @@ def root() -> dict[str, str]:
     return {
         "message": "Strikers API is running.",
         "engine": "Prediction Engine 7.5",
-        "release": "3.0",
+        "release": "3.5",
     }
 
 
@@ -703,7 +826,7 @@ def root() -> dict[str, str]:
 def health() -> dict[str, str]:
     initialize_database()
     import_legacy_history(_read_history())
-    return {"status": "online", "engine": "7.5", "release": "3.0"}
+    return {"status": "online", "engine": "7.5", "release": "3.5"}
 
 
 @app.get("/teams")
@@ -752,11 +875,41 @@ def schedule(
     }
 
 
+@app.get("/live-games")
+def live_games(
+    game_date: str = Query(default_factory=lambda: date_type.today().isoformat(), alias="date"),
+) -> dict[str, Any]:
+    data = _get_json(
+        f"{MLB_STATS_API}/schedule",
+        {
+            "sportId": 1,
+            "date": game_date,
+            "hydrate": "linescore,probablePitcher,team,venue",
+        },
+    )
+    saved = list_sqlite_predictions(limit=500)
+    saved_by_game = {int(item["game_pk"]): item for item in saved if item.get("game_pk")}
+    games: list[dict[str, Any]] = []
+    for date_block in data.get("dates", []):
+        games.extend(_live_game_payload(game, saved_by_game) for game in date_block.get("games", []))
+    order = {"Live": 0, "Preview": 1, "Final": 2}
+    games.sort(key=lambda item: (order.get(item["status"]["abstract"], 3), item.get("game_date") or ""))
+    return {
+        "date": game_date,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "refresh_seconds": 30,
+        "total_games": len(games),
+        "live_count": sum(1 for game in games if game["status"]["abstract"] == "Live"),
+        "games": games,
+    }
+
+
 @app.post("/predict")
 def predict_matchup(request: PredictionRequest) -> dict[str, Any]:
     return _run_prediction(
         request.away_team, request.home_team, save_history=True,
         away_odds=request.away_odds, home_odds=request.home_odds,
+        game_pk=request.game_pk, official_date=request.official_date,
     )
 
 
@@ -773,9 +926,23 @@ def ml_status() -> dict[str, Any]:
     return model_status()
 
 
+@app.get("/odds/status")
+def sportsbook_odds_status() -> dict[str, Any]:
+    return odds_status()
+
+
+@app.get("/sportsbook-odds")
+def sportsbook_odds(
+    away_team: str = Query(min_length=2, max_length=80),
+    home_team: str = Query(min_length=2, max_length=80),
+    force: bool = Query(default=False),
+) -> dict[str, Any]:
+    return get_matchup_odds(away_team, home_team, force=force)
+
+
 @app.get("/dashboard-summary")
 def dashboard_summary() -> dict[str, Any]:
-    return {"database": database_summary(), "ml": model_status(), "engine": "7.5", "release": "3.0"}
+    return {"database": database_summary(), "ml": model_status(), "odds": odds_status(), "engine": "7.5", "release": "3.5"}
 
 
 @app.get("/best-bets")
@@ -799,6 +966,8 @@ def best_bets(
                 away_name,
                 home_name,
                 save_history=False,
+                game_pk=game.get("game_pk"),
+                official_date=game.get("official_date"),
             )
             prediction = result["prediction"]
             away_probability = float(prediction["away_probability"])
@@ -815,6 +984,12 @@ def best_bets(
                     "reasons": prediction.get("reasons", []),
                     "away_probability": away_probability,
                     "home_probability": home_probability,
+                    "sportsbook_intelligence": result.get("sportsbook_intelligence"),
+                    "bet_score": ((result.get("sportsbook_intelligence") or {}).get("best_value") or {}).get("bet_score"),
+                    "edge_points": ((result.get("sportsbook_intelligence") or {}).get("best_value") or {}).get("edge_points"),
+                    "best_odds": ((result.get("sportsbook_intelligence") or {}).get("best_value") or {}).get("best_odds"),
+                    "best_bookmaker": ((result.get("sportsbook_intelligence") or {}).get("best_value") or {}).get("best_bookmaker"),
+                    "recommendation": ((result.get("sportsbook_intelligence") or {}).get("best_value") or {}).get("recommendation"),
                 }
             )
         except HTTPException as error:
@@ -825,7 +1000,7 @@ def best_bets(
                 }
             )
 
-    ranked.sort(key=lambda item: item["probability"], reverse=True)
+    ranked.sort(key=lambda item: (item.get("bet_score") is not None, item.get("bet_score") or -1, item.get("edge_points") or -999, item["probability"]), reverse=True)
 
     return {
         "date": game_date,
@@ -1124,11 +1299,13 @@ def grade_saved_predictions() -> dict[str, Any]:
 
 @app.get("/model-performance")
 def model_performance(refresh: bool = Query(default=True)) -> dict[str, Any]:
-    history = _read_history()
+    history = _dedupe_history(_read_history())
+    changed = 0
     if refresh:
         history, changed = grade_predictions(history, schedule)
-        if changed:
-            _write_history(history)
+    # Always persist the deduplicated view so all future metrics stay clean.
+    _write_history(history)
+    import_legacy_history(history)
     return build_performance(history)
 
 

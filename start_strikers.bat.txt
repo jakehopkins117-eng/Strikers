@@ -1,0 +1,25 @@
+@echo off
+title Strikers Launcher
+
+echo ==========================================
+echo          Starting Strikers...
+echo ==========================================
+echo.
+
+echo Starting backend...
+start "Strikers Backend" cmd /k "cd /d ""%~dp0"" && python -m uvicorn web_api:app --reload"
+
+timeout /t 4 /nobreak >nul
+
+echo Starting frontend...
+start "Strikers Frontend" cmd /k "cd /d ""%~dp0frontend"" && npm.cmd run dev"
+
+timeout /t 6 /nobreak >nul
+
+echo Opening Strikers...
+start "" "http://localhost:5173"
+
+echo.
+echo Backend and frontend windows should now be open.
+echo You may close this launcher window.
+pause

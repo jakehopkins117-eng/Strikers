@@ -1,0 +1,21 @@
+STRIKERS v3.3 — BULLPEN INTELLIGENCE
+
+Adds:
+- Three-day reliever workload tracking from MLB box scores
+- Bullpen availability score from 20–100
+- Fresh / Manageable / Taxed / Critical fatigue labels
+- Likely unavailable and limited reliever detection
+- Bullpen ERA and WHIP when MLB's relief split is available
+- Bullpen weighting inside the prediction engine
+- Matchup Predictor bullpen comparison card
+
+The existing Live Game Tracker and Live Games Dashboard are preserved.
+
+Changed files:
+- services/bullpen.py (new)
+- services/prediction.py
+- web_api.py
+- frontend/src/App.tsx
+- frontend/src/App.css
+
+Install by copying the Strikers2 folder over your existing Strikers2 folder and selecting Replace files in destination.

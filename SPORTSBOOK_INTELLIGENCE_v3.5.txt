@@ -1,0 +1,20 @@
+STRIKERS v3.5 — SPORTSBOOK INTELLIGENCE
+
+1. Create a new API key in The Odds API dashboard because the previous key was shared in chat.
+2. In the Strikers2 folder, copy .env.example to .env.
+3. Replace ODDS_API_KEY=replace_with_your_new_key with the new key.
+4. Run: pip install -r requirements.txt
+5. Restart the backend and frontend.
+
+Added:
+- Live MLB moneyline, spread, and total markets from The Odds API
+- Best available moneyline across supported sportsbooks
+- No-vig market probability
+- Strikers edge calculation
+- Expected value
+- 0–100 Bet Score
+- Premium Bet / Worth Considering / Pass recommendations
+- Sportsbook-ranked Best Bets page
+- API quota and cache status endpoint
+
+The API key is intentionally NOT included in this ZIP.

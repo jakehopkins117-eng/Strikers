@@ -1,0 +1,23 @@
+STRIKERS v3.2 — LIVE GAMES DASHBOARD
+
+Added:
+- New Live Games navigation page
+- Live/upcoming/final filters
+- Live scores and inning status
+- Balls, strikes, outs, and occupied bases
+- Current batter and pitcher when supplied by MLB
+- Saved Strikers pregame pick beside each game
+- Lightweight live probability estimate based on pregame probability, score, and inning
+- Automatic refresh every 30 seconds
+- Manual Refresh Now button and date selector
+
+Backend endpoint:
+GET /live-games?date=YYYY-MM-DD
+
+Validation completed:
+- Python backend compiles successfully
+- Live-game payload tested with a simulated in-progress game
+- TypeScript compiler completed successfully
+
+Note:
+The live probability is labeled as an estimate. It is not yet a trained pitch-by-pitch win-probability model.

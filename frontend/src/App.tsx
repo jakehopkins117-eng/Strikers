@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { PredictionIntelligence } from "./components/PredictionIntelligence";
 import { BettingIntelligence } from "./components/BettingIntelligence";
+import { SportsbookIntelligence } from "./components/SportsbookIntelligence";
 
 type Page =
   | "Dashboard"
+  | "Live Games"
   | "Matchup Predictor"
   | "Best Bets"
   | "Power Rankings"
@@ -45,6 +47,20 @@ type Game = {
   home: ScheduleTeam;
 };
 
+
+type LiveGame = Game & {
+  inning: number | null;
+  inning_label: string;
+  count: { balls:number; strikes:number; outs:number };
+  bases: { first:boolean; second:boolean; third:boolean };
+  current_batter: string | null;
+  current_pitcher: string | null;
+  prediction: HistoryItem | null;
+  live_probability: { home:number; away:number; method:string } | null;
+};
+
+type LiveGamesPayload = { date:string; updated_at:string; refresh_seconds:number; total_games:number; live_count:number; games:LiveGame[] };
+
 type Pitcher = {
   id: number | null;
   name: string;
@@ -52,6 +68,36 @@ type Pitcher = {
   era: number | null;
   whip: number | null;
   innings: number | null;
+};
+
+
+type LineupPlayer = { player_id:number; name:string; position:string; ops:number|null };
+type LineupSide = { status:string; confirmed:boolean; strength_score:number; average_ops:number|null; batting_order:LineupPlayer[]; note:string };
+type InjuryPlayer = { player_id:number|null; name:string; position:string; status:string; impact:string };
+type InjurySide = { players:InjuryPlayer[]; count:number; penalty_points:number };
+type GameAnalyst = { title:string; pick:string; win_probability:number; verdict:string; summary:string; key_reasons:string[]; biggest_risks:string[]; lineup_status:string; model_adjustment:{lineup_adjustment:number;injury_adjustment:number;total_adjustment:number}; disclaimer:string };
+
+type Bullpen = {
+  team_id: number;
+  team_name: string;
+  availability_score: number;
+  fatigue_level: string;
+  games_analyzed: number;
+  total_pitches_3d: number;
+  relievers_used_3d: number;
+  overworked_relievers: number;
+  unavailable_relievers: number;
+  season_era: number | null;
+  season_whip: number | null;
+  available: boolean;
+  note: string;
+  relievers: { player_id:number; name:string; pitches:number; appearances:number; used_yesterday:boolean; used_back_to_back:boolean; status:string }[];
+};
+
+type SportsbookSide = {
+  team:string; side:string; model_probability:number; market_probability:number|null; consensus_implied_probability:number|null;
+  edge_points:number|null; best_odds:number|null; best_bookmaker:string|null; best_link:string|null; expected_value:number|null;
+  bet_score:number; value_label:string; recommendation:string; recommendation_detail:string; market_depth:number; reasons:string[];
 };
 
 export type PredictionResponse = {
@@ -70,9 +116,24 @@ export type PredictionResponse = {
   home_team: Record<string, number | string | null>;
   away_pitcher: Pitcher;
   home_pitcher: Pitcher;
+  away_bullpen: Bullpen;
+  home_bullpen: Bullpen;
+  lineup_intelligence: { game_pk:number|null; away:LineupSide; home:LineupSide; available:boolean };
+  injury_intelligence: { away:InjurySide; home:InjurySide; available:boolean; note:string };
+  prediction_adjustments: { lineup_adjustment:number; injury_adjustment:number; total_adjustment:number };
+  game_analyst: GameAnalyst;
   betting_intelligence?: {
-    market: string; status: string; disclaimer: string; best_value: null | Record<string, unknown>;
-    sides: { team:string; model_probability:number; odds:number|null; implied_probability:number|null; edge_points:number|null; fair_odds:number; expected_value:number|null; rating:string; recommendation:string }[];
+    market: string; status: string; disclaimer: string; staking_method:string; unit_definition:string;
+    best_value: null | { team:string; odds:number|null; quality_score:number; expected_value:number|null; suggested_units:number };
+    sides: { team:string; model_probability:number; odds:number|null; implied_probability:number|null; edge_points:number|null; fair_odds:number; expected_value:number|null; rating:string; recommendation:string; quality_score:number|null; kelly_fraction:number|null; suggested_units:number|null }[];
+  };
+  sportsbook_intelligence?: {
+    available:boolean; status:string; message:string; provider:string; event_id?:string; commence_time?:string; last_update?:string;
+    best_value:null|SportsbookSide; sides:SportsbookSide[];
+    bookmakers:{key:string;name:string;last_update:string|null;link:string|null;away_odds:number|null;home_odds:number|null}[];
+    spreads:{bookmaker:string;team:string;point:number|null;odds:number|null;last_update:string|null}[];
+    totals:{bookmaker:string;side:string;point:number|null;odds:number|null;last_update:string|null}[];
+    quota:Record<string,string|number|boolean|null>; disclaimer:string;
   };
   ml_second_opinion?: { available:boolean; status:string; winner:string|null; home_probability:number|null; away_probability:number|null; agreement:boolean|null; message?:string };
   intelligence: {
@@ -113,6 +174,12 @@ type BestBet = {
   reasons: string[];
   away_probability: number;
   home_probability: number;
+  bet_score:number|null;
+  edge_points:number|null;
+  best_odds:number|null;
+  best_bookmaker:string|null;
+  recommendation:string|null;
+  sportsbook_intelligence?:PredictionResponse["sportsbook_intelligence"];
 };
 
 type Ranking = {
@@ -158,7 +225,7 @@ type ModelLab = {
 
 type WeatherGame = Game & { weather: { indoor:boolean; available:boolean; temperature_f?:number; precipitation_probability?:number; wind_mph?:number; gust_mph?:number; impact:string; impact_score:number; summary:string } };
 
-type DashboardSummary = { database: { total:number; graded:number; pending:number; wins:number; losses:number; accuracy:number; recent:HistoryItem[] }; ml:{available:boolean;status:string;trained_rows?:number}; engine:string; release:string };
+type DashboardSummary = { database: { total:number; graded:number; pending:number; wins:number; losses:number; accuracy:number; recent:HistoryItem[] }; ml:{available:boolean;status:string;trained_rows?:number}; odds?:{provider:string;configured:boolean;cache_valid:boolean;cached_events:number;remaining_requests?:string|null}; engine:string; release:string };
 
 type HistoryItem = {
   id: string;
@@ -185,6 +252,7 @@ const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\
 
 const navItems: { label: Page; icon: string }[] = [
   { label: "Dashboard", icon: "⌂" },
+  { label: "Live Games", icon: "●" },
   { label: "Matchup Predictor", icon: "⚾" },
   { label: "Best Bets", icon: "★" },
   { label: "Player Props", icon: "◎" },
@@ -224,6 +292,10 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(todayString());
   const [teams, setTeams] = useState<TeamOption[]>([]);
   const [games, setGames] = useState<Game[]>([]);
+  const [liveGames, setLiveGames] = useState<LiveGame[]>([]);
+  const [liveUpdatedAt, setLiveUpdatedAt] = useState<string | null>(null);
+  const [loadingLive, setLoadingLive] = useState(false);
+  const [liveFilter, setLiveFilter] = useState<"All"|"Live"|"Upcoming"|"Final">("All");
   const [bestBets, setBestBets] = useState<BestBet[]>([]);
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [playerProps, setPlayerProps] = useState<PlayerProp[]>([]);
@@ -277,6 +349,13 @@ function App() {
     if (backendOnline) void loadSchedule(selectedDate);
   }, [selectedDate, backendOnline]);
 
+  useEffect(() => {
+    if (!backendOnline || (activePage !== "Live Games" && activePage !== "Dashboard")) return;
+    void loadLiveGames(false);
+    const timer = window.setInterval(() => void loadLiveGames(false), 30000);
+    return () => window.clearInterval(timer);
+  }, [activePage, backendOnline, selectedDate]);
+
   async function initialize() {
     try {
       const healthResponse = await fetch(`${API_URL}/health`);
@@ -302,6 +381,22 @@ function App() {
     }
   }
 
+  async function loadLiveGames(showLoader = true) {
+    if (showLoader) setLoadingLive(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_URL}/live-games?date=${selectedDate}`);
+      const payload = await response.json() as LiveGamesPayload & { detail?:string };
+      if (!response.ok) throw new Error(payload.detail ?? "Live games failed.");
+      setLiveGames(payload.games);
+      setLiveUpdatedAt(payload.updated_at);
+    } catch (requestError) {
+      setError(errorMessage(requestError, "Could not load live games."));
+    } finally {
+      if (showLoader) setLoadingLive(false);
+    }
+  }
+
   async function loadSchedule(date: string) {
     setLoadingSchedule(true);
     setError("");
@@ -317,7 +412,7 @@ function App() {
     }
   }
 
-  async function runPrediction(away: string, home: string) {
+  async function runPrediction(away: string, home: string, game?: Game) {
     setAwayTeam(away);
     setHomeTeam(home);
     setError("");
@@ -328,7 +423,7 @@ function App() {
       const response = await fetch(`${API_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ away_team: away, home_team: home, away_odds: awayOdds ? Number(awayOdds) : null, home_odds: homeOdds ? Number(homeOdds) : null }),
+        body: JSON.stringify({ away_team: away, home_team: home, away_odds: awayOdds ? Number(awayOdds) : null, home_odds: homeOdds ? Number(homeOdds) : null, game_pk: game?.game_pk ?? null, official_date: game?.official_date ?? null }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.detail ?? "Prediction failed.");
@@ -485,7 +580,8 @@ function App() {
 
   function navigate(page: Page) {
     setSidebarOpen(false);
-    if (page === "Best Bets") void loadBestBets();
+    if (page === "Live Games") { setActivePage("Live Games"); void loadLiveGames(); }
+    else if (page === "Best Bets") void loadBestBets();
     else if (page === "Player Props") void loadPlayerProps();
     else if (page === "Power Rankings") void loadRankings();
     else if (page === "Model Performance") void loadPerformance();
@@ -531,7 +627,7 @@ function App() {
         <header className="topbar">
           <div className="topbar-title"><button className="menu-button" aria-label="Open navigation" type="button" onClick={() => setSidebarOpen(true)}>☰</button><div><p className="eyebrow">STRIKERS COMMAND CENTER</p><h2>{activePage}</h2></div></div>
           <div className="topbar-actions">
-            <span className="season-badge">Strikers v3.0</span>
+            <span className="season-badge">Strikers v3.5</span>
             <div className={`api-indicator ${backendOnline ? "online" : ""}`}><span />API</div>
             <button className="profile-button" type="button">JH</button>
           </div>
@@ -539,6 +635,7 @@ function App() {
 
         {error && <div className="error-banner"><span>{error}</span><button type="button" aria-label="Dismiss error" onClick={() => setError("")}>×</button></div>}
         {activePage === "Dashboard" && renderDashboard()}
+        {activePage === "Live Games" && renderLiveGames()}
         {activePage === "Matchup Predictor" && renderPredictor()}
         {activePage === "Best Bets" && renderBestBets()}
         {activePage === "Player Props" && renderPlayerProps()}
@@ -551,6 +648,23 @@ function App() {
       </main>
     </div>
   );
+
+  function renderLiveGames() {
+    const filtered = liveGames.filter((game) => {
+      if (liveFilter === "All") return true;
+      if (liveFilter === "Live") return game.status.abstract === "Live";
+      if (liveFilter === "Final") return game.status.abstract === "Final";
+      return game.status.abstract === "Preview";
+    });
+    const liveCount = liveGames.filter(game => game.status.abstract === "Live").length;
+    const finalCount = liveGames.filter(game => game.status.abstract === "Final").length;
+    return <>
+      <section className="section-heading bets-heading live-heading"><div><p className="eyebrow">REAL-TIME MLB CENTER</p><h3>Live Games Dashboard</h3><p>Scores, innings, base state, active matchup, and your saved Strikers pick. Refreshes every 30 seconds.</p></div><div className="live-actions"><label className="date-control">Date<input type="date" value={selectedDate} onChange={(event)=>setSelectedDate(event.target.value)}/></label><button className="secondary-button" type="button" onClick={()=>void loadLiveGames(true)}>Refresh Now</button></div></section>
+      <section className="stats-grid live-stats"><StatCard label="Live now" value={`${liveCount}`} note="Games in progress" positive={liveCount>0}/><StatCard label="Upcoming" value={`${liveGames.length-liveCount-finalCount}`} note="Scheduled today"/><StatCard label="Final" value={`${finalCount}`} note="Completed games"/><StatCard label="Last update" value={liveUpdatedAt ? formatTime(liveUpdatedAt) : "—"} note="Automatic 30-second refresh"/></section>
+      <div className="live-filter-bar">{(["All","Live","Upcoming","Final"] as const).map(filter=><button key={filter} type="button" className={liveFilter===filter?"active":""} onClick={()=>setLiveFilter(filter)}>{filter}</button>)}</div>
+      {loadingLive ? <LoadingCard text="Loading live MLB action…"/> : filtered.length===0 ? <EmptyState title="No games in this view" text="Try another filter or choose a different date."/> : <section className="live-game-grid">{filtered.map(game=><LiveGameCard key={game.game_pk} game={game} onPredict={()=>void runPrediction(game.away.name,game.home.name,game)}/>)}</section>}
+    </>;
+  }
 
   function renderDashboard() {
     return (
@@ -587,6 +701,20 @@ function App() {
           <StatCard label="ML Layer" value={dashboardSummary?.ml.available ? "Active" : "Collecting"} note={dashboardSummary?.ml.status ?? "Foundation ready"} positive={dashboardSummary?.ml.available ?? false} />
         </section>
 
+        <section className="section-heading live-tracker-heading">
+          <div><p className="eyebrow">LIVE GAME TRACKER</p><h3>Games in progress</h3><p>Live scores, inning state, runners, active matchup, and your saved Strikers prediction.</p></div>
+          <button className="secondary-button" type="button" onClick={() => navigate("Live Games")}>Open Full Live Dashboard</button>
+        </section>
+
+        {loadingLive ? <LoadingCard text="Checking for live MLB games…" /> :
+         liveGames.filter((game) => game.status.abstract === "Live").length === 0 ?
+         <EmptyState title="No games are live right now" text="The tracker will update automatically every 30 seconds while you are on the dashboard." /> :
+         <section className="live-game-grid dashboard-live-tracker">
+           {liveGames.filter((game) => game.status.abstract === "Live").map((game) =>
+             <LiveGameCard key={game.game_pk} game={game} onPredict={() => void runPrediction(game.away.name, game.home.name, game)} />
+           )}
+         </section>}
+
         <section className="section-heading">
           <div><p className="eyebrow">MLB SCHEDULE</p><h3>Game Center</h3></div>
           <span>{selectedDate}</span>
@@ -595,7 +723,7 @@ function App() {
         {loadingSchedule ? <LoadingCard text="Loading the MLB slate…" /> :
          games.length === 0 ? <EmptyState title="No MLB games scheduled" text="Choose another date to load a different slate." /> :
          <section className="game-grid">
-           {games.map((game) => <GameCard game={game} key={game.game_pk} onPredict={() => void runPrediction(game.away.name, game.home.name)} />)}
+           {games.map((game) => <GameCard game={game} key={game.game_pk} onPredict={() => void runPrediction(game.away.name, game.home.name, game)} />)}
          </section>}
       </>
     );
@@ -639,11 +767,15 @@ function App() {
                 {result.prediction.reasons.map((reason) => <div className="reason-item" key={reason}><span>✓</span><strong>{reason}</strong></div>)}
               </div>
             </article>
+            <SportsbookIntelligence result={result} />
             <BettingIntelligence result={result} />
             <PredictionIntelligence result={result} />
             <article className="panel ml-opinion-card"><p className="eyebrow">ML SECOND OPINION</p><h3>{result.ml_second_opinion?.available ? result.ml_second_opinion.winner : "Collecting training data"}</h3><p>{result.ml_second_opinion?.available ? `${result.ml_second_opinion.agreement ? "Agrees" : "Disagrees"} with the core engine.` : (result.ml_second_opinion?.message ?? "The core engine remains fully active until enough completed predictions exist.")}</p></article>
             <TeamComparison result={result} />
             <PitcherComparison result={result} />
+            <BullpenComparison result={result} />
+            <LineupInjuryIntelligence result={result} />
+            <GameAnalystPanel analyst={result.game_analyst} />
           </section>
         )}
       </>
@@ -654,7 +786,7 @@ function App() {
     return (
       <>
         <section className="section-heading bets-heading">
-          <div><p className="eyebrow">AUTOMATIC MODEL RANKING</p><h3>Best Bets</h3><p>Every scheduled matchup ranked by highest model probability.</p></div>
+          <div><p className="eyebrow">SPORTSBOOK-RANKED DAILY SLATE</p><h3>Best Bets</h3><p>Matchups ranked by Bet Score, market edge, best available price, and model confidence.</p></div>
           <button className="secondary-button" type="button" onClick={() => void loadBestBets(true)}>Recalculate</button>
         </section>
 
@@ -670,8 +802,14 @@ function App() {
                  <h3>{bet.winner}</h3>
                  <div className="bet-meta"><span>{bet.confidence_stars}</span><strong>{bet.confidence}</strong><span>{formatTime(bet.game.game_date)}</span></div>
                </div>
+               <div className="best-bet-market">
+                 <div><span>Bet Score</span><strong>{bet.bet_score === null ? "—" : `${bet.bet_score}/100`}</strong></div>
+                 <div><span>Edge</span><strong>{bet.edge_points === null ? "—" : `${bet.edge_points >= 0 ? "+" : ""}${bet.edge_points.toFixed(1)} pts`}</strong></div>
+                 <div><span>Best line</span><strong>{bet.best_odds === null ? "—" : `${bet.best_odds > 0 ? "+" : ""}${bet.best_odds}`}</strong><small>{bet.best_bookmaker ?? "Market unavailable"}</small></div>
+                 <div><span>Action</span><strong>{bet.recommendation ?? "NO MARKET"}</strong></div>
+               </div>
                <div className="bet-probability"><strong>{bet.probability.toFixed(1)}%</strong><span>model probability</span></div>
-               <button className="secondary-button" type="button" onClick={() => void runPrediction(bet.game.away.name, bet.game.home.name)}>Full Analysis</button>
+               <button className="secondary-button" type="button" onClick={() => void runPrediction(bet.game.away.name, bet.game.home.name, bet.game)}>Full Analysis</button>
              </article>
            ))}
          </section>}
@@ -821,7 +959,7 @@ function App() {
 
   function renderWeather() {
     return <><section className="section-heading bets-heading"><div><p className="eyebrow">LIVE SLATE CONDITIONS</p><h3>Weather Center</h3><p>Temperature, wind, precipitation risk, and run-environment context.</p></div><button className="secondary-button" type="button" onClick={() => void loadWeather(true)}>Refresh Forecasts</button></section>
-    {loadingWeather ? <LoadingCard text="Loading ballpark forecasts…"/> : weatherGames.length===0 ? <EmptyState title="No weather games found" text="Choose a date with scheduled MLB games."/> : <section className="weather-grid">{weatherGames.map(game=><article className="panel weather-card" key={game.game_pk}><div className="weather-top"><div><span>{game.away.name} at {game.home.name}</span><h3>{game.venue ?? 'Venue TBD'}</h3></div><span className={`weather-impact impact-${game.weather.impact.toLowerCase().replace(' ','-')}`}>{game.weather.impact}</span></div>{game.weather.indoor ? <div className="indoor-weather">⌂ Climate controlled</div> : game.weather.available ? <div className="weather-metrics"><div><span>Temperature</span><strong>{game.weather.temperature_f}°F</strong></div><div><span>Wind</span><strong>{game.weather.wind_mph} mph</strong></div><div><span>Rain</span><strong>{game.weather.precipitation_probability}%</strong></div><div><span>Gusts</span><strong>{game.weather.gust_mph} mph</strong></div></div> : <p>Forecast unavailable.</p>}<p className="weather-summary">{game.weather.summary}</p><button className="secondary-button full-width" type="button" onClick={()=>void runPrediction(game.away.name,game.home.name)}>Analyze Matchup</button></article>)}</section>}</>;
+    {loadingWeather ? <LoadingCard text="Loading ballpark forecasts…"/> : weatherGames.length===0 ? <EmptyState title="No weather games found" text="Choose a date with scheduled MLB games."/> : <section className="weather-grid">{weatherGames.map(game=><article className="panel weather-card" key={game.game_pk}><div className="weather-top"><div><span>{game.away.name} at {game.home.name}</span><h3>{game.venue ?? 'Venue TBD'}</h3></div><span className={`weather-impact impact-${game.weather.impact.toLowerCase().replace(' ','-')}`}>{game.weather.impact}</span></div>{game.weather.indoor ? <div className="indoor-weather">⌂ Climate controlled</div> : game.weather.available ? <div className="weather-metrics"><div><span>Temperature</span><strong>{game.weather.temperature_f}°F</strong></div><div><span>Wind</span><strong>{game.weather.wind_mph} mph</strong></div><div><span>Rain</span><strong>{game.weather.precipitation_probability}%</strong></div><div><span>Gusts</span><strong>{game.weather.gust_mph} mph</strong></div></div> : <p>Forecast unavailable.</p>}<p className="weather-summary">{game.weather.summary}</p><button className="secondary-button full-width" type="button" onClick={()=>void runPrediction(game.away.name,game.home.name,game)}>Analyze Matchup</button></article>)}</section>}</>;
   }
 
 
@@ -901,6 +1039,22 @@ function GameCard({ game, onPredict }: { game: Game; onPredict: () => void }) {
   </article>;
 }
 
+function BaseDiamond({ bases }: { bases: LiveGame["bases"] }) {
+  return <div className="base-diamond" aria-label={`Runners on ${Object.entries(bases).filter(([,v])=>v).map(([k])=>k).join(", ") || "no bases"}`}><span className={`base second ${bases.second?"occupied":""}`}/><span className={`base third ${bases.third?"occupied":""}`}/><span className={`base first ${bases.first?"occupied":""}`}/></div>;
+}
+
+function LiveGameCard({ game, onPredict }: { game:LiveGame; onPredict:()=>void }) {
+  const live=game.status.abstract==="Live"; const final=game.status.abstract==="Final";
+  const pick=game.prediction; const pickProbability=pick ? Math.max(pick.away_probability,pick.home_probability) : null;
+  return <article className={`panel live-game-card ${live?"is-live":""}`}>
+    <div className="live-card-header"><div><span className={`game-status ${live?"live":""}`}>{live?"● LIVE":game.status.detailed}</span><strong>{live||final?game.inning_label:formatTime(game.game_date)}</strong></div><span>{game.venue??"Venue TBD"}</span></div>
+    <div className="live-scoreboard"><div className="live-team"><TeamLogo team={game.away}/><div><strong>{game.away.name}</strong><span>{game.away.probable_pitcher?.name??"Starter TBD"}</span></div><b>{game.away.score??0}</b></div><div className="live-team"><TeamLogo team={game.home}/><div><strong>{game.home.name}</strong><span>{game.home.probable_pitcher?.name??"Starter TBD"}</span></div><b>{game.home.score??0}</b></div></div>
+    {live && <div className="live-situation"><BaseDiamond bases={game.bases}/><div className="count-box"><strong>{game.count.balls}-{game.count.strikes}</strong><span>{game.count.outs} out{game.count.outs===1?"":"s"}</span></div><div className="active-matchup"><span>At bat</span><strong>{game.current_batter??"Updating…"}</strong><span>Pitching: {game.current_pitcher??"Updating…"}</span></div></div>}
+    <div className="live-model-box">{pick?<><div><span>Strikers pregame pick</span><strong>{pick.winner}</strong><small>{pickProbability?.toFixed(1)}% · {pick.confidence_stars} {pick.confidence}</small></div>{game.live_probability&&<div className="live-prob"><span>Live estimate</span><strong>{game.live_probability.home>=50?game.home.name:game.away.name} {Math.max(game.live_probability.home,game.live_probability.away).toFixed(1)}%</strong><small>{game.live_probability.method}</small></div>}</>:<div><span>No saved prediction</span><strong>Analyze this matchup</strong><small>Save a pregame pick to track it here.</small></div>}</div>
+    <button className="secondary-button full-width" type="button" onClick={onPredict}>{pick?"Open Matchup Analysis":"Run Prediction"}</button>
+  </article>;
+}
+
 function StatCard({ label, value, note, positive = false }: { label: string; value: string; note: string; positive?: boolean }) {
   return <article className="stat-card"><span>{label}</span><strong className={positive ? "positive" : ""}>{value}</strong><small>{note}</small></article>;
 }
@@ -926,6 +1080,26 @@ function TeamComparison({ result }: { result: PredictionResponse }) {
 
 function PitcherComparison({ result }: { result: PredictionResponse }) {
   return <article className="panel pitcher-card"><p className="eyebrow">PROBABLE STARTERS</p><h3>Pitcher matchup</h3><div className="pitcher-grid"><PitcherPanel team={result.matchup.away} pitcher={result.away_pitcher} /><span className="pitcher-vs">VS</span><PitcherPanel team={result.matchup.home} pitcher={result.home_pitcher} /></div></article>;
+}
+
+function LineupInjuryIntelligence({ result }: { result: PredictionResponse }) {
+  const sides:[string,LineupSide,InjurySide][] = [
+    [result.matchup.away,result.lineup_intelligence.away,result.injury_intelligence.away],
+    [result.matchup.home,result.lineup_intelligence.home,result.injury_intelligence.home],
+  ];
+  return <article className="panel lineup-injury-card"><div className="li-head"><div><p className="eyebrow">LINEUP & INJURY INTELLIGENCE v3.4</p><h3>Who is actually available tonight?</h3></div><span className="li-adjustment">Model shift {result.prediction_adjustments.total_adjustment>=0?'+':''}{result.prediction_adjustments.total_adjustment.toFixed(1)} pts toward away</span></div><div className="li-grid">{sides.map(([team,lineup,injuries])=><section className="li-team" key={team}><div className="li-team-title"><div><span>{team}</span><h4>{lineup.status}</h4></div><strong>{Math.round(lineup.strength_score)}<small>/100</small></strong></div><div className="li-meter"><i style={{width:`${lineup.strength_score}%`}} /></div><p className="li-note">{lineup.note}</p>{lineup.batting_order.length>0&&<details><summary>Batting order</summary><div className="batting-order">{lineup.batting_order.map((player,index)=><div key={player.player_id}><b>{index+1}</b><span>{player.name}<small>{player.position}{player.ops!=null?` · ${player.ops.toFixed(3)} OPS`:''}</small></span></div>)}</div></details>}<div className="injury-summary"><span>Official IL</span><strong>{injuries.count} player{injuries.count===1?'':'s'}</strong><small>{injuries.penalty_points.toFixed(1)} model-penalty points</small></div>{injuries.players.length>0?<div className="injury-list">{injuries.players.slice(0,8).map(player=><div key={`${team}-${player.player_id}`}><span><strong>{player.name}</strong><small>{player.position} · {player.status}</small></span><b>{player.impact}</b></div>)}</div>:<p className="li-note">No official injured-list entries returned by MLB.</p>}</section>)}</div><p className="li-disclaimer">{result.injury_intelligence.note}</p></article>;
+}
+
+function GameAnalystPanel({ analyst }: { analyst: GameAnalyst }) {
+  return <article className="panel game-analyst-card"><div className="analyst-hero"><div><p className="eyebrow">AI GAME ANALYST</p><h3>{analyst.pick} · {analyst.win_probability.toFixed(1)}%</h3><strong>{analyst.verdict}</strong></div><span>Grounded in Strikers model inputs</span></div><p className="analyst-summary">{analyst.summary}</p><div className="analyst-columns"><section><h4>Why the model leans this way</h4>{analyst.key_reasons.map(reason=><div className="analyst-point positive-point" key={reason}><span>✓</span><p>{reason}</p></div>)}</section><section><h4>Biggest risks</h4>{analyst.biggest_risks.map(risk=><div className="analyst-point risk-point" key={risk}><span>!</span><p>{risk}</p></div>)}</section></div><div className="analyst-adjustments"><span>Lineup {analyst.model_adjustment.lineup_adjustment>=0?'+':''}{analyst.model_adjustment.lineup_adjustment.toFixed(1)}</span><span>Injuries {analyst.model_adjustment.injury_adjustment>=0?'+':''}{analyst.model_adjustment.injury_adjustment.toFixed(1)}</span><span>Total {analyst.model_adjustment.total_adjustment>=0?'+':''}{analyst.model_adjustment.total_adjustment.toFixed(1)}</span></div><small className="analyst-disclaimer">{analyst.disclaimer}</small></article>;
+}
+function BullpenComparison({ result }: { result: PredictionResponse }) {
+  return <article className="panel bullpen-card"><p className="eyebrow">BULLPEN INTELLIGENCE v3.3</p><h3>Relief availability</h3><p className="bullpen-subtitle">Workload from the previous three calendar days. Higher availability is better.</p><div className="bullpen-grid"><BullpenPanel bullpen={result.away_bullpen} /><span className="pitcher-vs">VS</span><BullpenPanel bullpen={result.home_bullpen} /></div></article>;
+}
+
+function BullpenPanel({ bullpen }: { bullpen: Bullpen }) {
+  const score = Math.round(bullpen.availability_score ?? 75);
+  return <div className="bullpen-panel"><div className="bullpen-title"><div><span>{bullpen.team_name}</span><h4>{bullpen.fatigue_level}</h4></div><strong className={`bullpen-score fatigue-${bullpen.fatigue_level.toLowerCase()}`}>{score}</strong></div><div className="bullpen-track"><i style={{width:`${score}%`}} /></div><div className="bullpen-metrics"><div><span>3-day pitches</span><strong>{bullpen.total_pitches_3d}</strong></div><div><span>Relievers used</span><strong>{bullpen.relievers_used_3d}</strong></div><div><span>Limited</span><strong>{bullpen.overworked_relievers}</strong></div><div><span>Unavailable</span><strong>{bullpen.unavailable_relievers}</strong></div></div>{bullpen.season_era != null && <div className="bullpen-quality"><span>Bullpen ERA <strong>{bullpen.season_era.toFixed(2)}</strong></span>{bullpen.season_whip != null && <span>WHIP <strong>{bullpen.season_whip.toFixed(2)}</strong></span>}</div>}<details className="reliever-details"><summary>Reliever workload</summary>{bullpen.relievers.length ? bullpen.relievers.map((reliever)=><div className="reliever-row" key={reliever.player_id}><div><strong>{reliever.name}</strong><span>{reliever.appearances} appearance{reliever.appearances === 1 ? "" : "s"}</span></div><b>{reliever.pitches} pitches</b><em>{reliever.status}</em></div>) : <p>No recent relief appearances found.</p>}</details></div>;
 }
 
 function PitcherPanel({ team, pitcher }: { team: string; pitcher: Pitcher }) {

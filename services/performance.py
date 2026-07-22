@@ -18,16 +18,29 @@ def grade_predictions(history: list[dict[str, Any]], schedule_loader: Callable[[
         if item.get("result") in {"win", "loss", "push"}:
             continue
         created = str(item.get("created_at", ""))
-        try:
-            game_date = datetime.fromisoformat(created.replace("Z", "+00:00")).date().isoformat()
-        except ValueError:
-            continue
+        game_date = str(item.get("official_date") or "").strip()
+        if not game_date:
+            try:
+                game_date = datetime.fromisoformat(created.replace("Z", "+00:00")).date().isoformat()
+            except ValueError:
+                continue
         if game_date not in cache:
             try:
                 cache[game_date] = schedule_loader(game_date).get("games", [])
             except Exception:
                 cache[game_date] = []
-        matchup = next((g for g in cache[game_date] if g.get("away", {}).get("name") == item.get("away_team") and g.get("home", {}).get("name") == item.get("home_team")), None)
+        game_pk = item.get("game_pk")
+        matchup = next(
+            (g for g in cache[game_date] if game_pk is not None and g.get("game_pk") == game_pk),
+            None,
+        )
+        if matchup is None:
+            matchup = next(
+                (g for g in cache[game_date]
+                 if g.get("away", {}).get("name") == item.get("away_team")
+                 and g.get("home", {}).get("name") == item.get("home_team")),
+                None,
+            )
         if not matchup or matchup.get("status", {}).get("abstract") != "Final":
             continue
         away_score = matchup.get("away", {}).get("score")

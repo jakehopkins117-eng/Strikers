@@ -1,0 +1,21 @@
+STRIKERS v3.4 — LINEUP, INJURY INTELLIGENCE + AI GAME ANALYST
+
+Changed files:
+- web_api.py
+- services/lineup_injuries.py (new)
+- frontend/src/App.tsx
+- frontend/src/App.css
+
+New behavior:
+- Reads official MLB batting orders when available.
+- Displays confirmed/projected lineup status and lineup strength.
+- Reads official injured-list roster entries.
+- Applies a capped lineup/injury adjustment (maximum 4 percentage points).
+- Prevents injury data from overpowering the core prediction model.
+- Generates a model-grounded AI Game Analyst report.
+- Preserves Live Game Tracker, Live Games, Bullpen Intelligence, history, and performance pages.
+
+Important limitations:
+- Day-to-day injuries and late scratches may not appear in MLB's official injured-list feed.
+- Lineups remain marked projected/unavailable until MLB publishes the batting order.
+- The analyst is generated from Strikers inputs; it does not call a paid external AI API.

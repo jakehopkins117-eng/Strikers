@@ -1,0 +1,21 @@
+Strikers Prediction Integrity 3.1.2
+
+Fixes included:
+- Model Performance, Grade & Refresh, and Model Lab now read from SQLite only.
+- Existing repeated same-day matchup records are deduplicated on startup.
+- Scheduled game predictions save MLB game_pk and official_date.
+- Re-running the same scheduled game updates its existing record instead of adding a new one.
+- Accuracy, ROI, units, streaks, confidence tiers, calibration, and trend use unique game records.
+- Legacy JSON history is no longer re-imported every time /health is called.
+
+Expected result for the included working database after migration:
+- 18 unique prediction records
+- 6 graded records
+- 3 wins / 3 losses
+- 50.0% accuracy
+
+Run backend:
+python -m uvicorn web_api:app --reload
+
+Run frontend from frontend folder:
+npm.cmd run dev

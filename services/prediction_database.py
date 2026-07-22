@@ -19,6 +19,65 @@ def connect() -> sqlite3.Connection:
     return connection
 
 
+def _date_from_timestamp(value: str | None) -> str | None:
+    if not value:
+        return None
+    return str(value)[:10] or None
+
+
+def _deduplicate_predictions(db: sqlite3.Connection) -> int:
+    """Collapse repeated checks of the same game to one canonical record.
+
+    New records use MLB game_pk. Legacy records fall back to official date plus
+    away/home matchup. The newest prediction is kept, while any existing grade
+    from the duplicate group is preserved.
+    """
+    rows = db.execute("SELECT * FROM predictions ORDER BY created_at DESC").fetchall()
+    groups: dict[tuple[Any, ...], list[sqlite3.Row]] = {}
+    for row in rows:
+        official_date = row["official_date"] or _date_from_timestamp(row["created_at"])
+        if row["game_pk"] is not None:
+            key = ("game_pk", int(row["game_pk"]))
+        else:
+            key = ("matchup", official_date, row["away_team"], row["home_team"])
+        groups.setdefault(key, []).append(row)
+
+    removed = 0
+    for items in groups.values():
+        if len(items) <= 1:
+            row = items[0]
+            if not row["official_date"]:
+                db.execute(
+                    "UPDATE predictions SET official_date=? WHERE id=?",
+                    (_date_from_timestamp(row["created_at"]), row["id"]),
+                )
+            continue
+
+        keep = items[0]  # query is newest first
+        graded = next((item for item in items if item["result"] in {"win", "loss", "push"}), None)
+        official_date = keep["official_date"] or _date_from_timestamp(keep["created_at"])
+        game_pk = keep["game_pk"] or next((item["game_pk"] for item in items if item["game_pk"] is not None), None)
+        db.execute(
+            """UPDATE predictions
+               SET game_pk=?, official_date=?, result=?, actual_winner=?,
+                   actual_away_score=?, actual_home_score=?
+               WHERE id=?""",
+            (
+                game_pk,
+                official_date,
+                graded["result"] if graded else keep["result"],
+                graded["actual_winner"] if graded else keep["actual_winner"],
+                graded["actual_away_score"] if graded else keep["actual_away_score"],
+                graded["actual_home_score"] if graded else keep["actual_home_score"],
+                keep["id"],
+            ),
+        )
+        duplicate_ids = [item["id"] for item in items[1:]]
+        db.executemany("DELETE FROM predictions WHERE id=?", [(record_id,) for record_id in duplicate_ids])
+        removed += len(duplicate_ids)
+    return removed
+
+
 def initialize_database() -> None:
     with connect() as db:
         db.executescript(
@@ -54,14 +113,52 @@ def initialize_database() -> None:
             CREATE INDEX IF NOT EXISTS idx_predictions_result ON predictions(result);
             """
         )
+        _deduplicate_predictions(db)
+        db.executescript(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_predictions_game_pk
+                ON predictions(game_pk) WHERE game_pk IS NOT NULL;
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_predictions_matchup_date
+                ON predictions(official_date, away_team, home_team)
+                WHERE game_pk IS NULL AND official_date IS NOT NULL;
+            """
+        )
+
+
+def _find_existing_id(
+    db: sqlite3.Connection,
+    *,
+    game_pk: int | None,
+    official_date: str | None,
+    away_team: str,
+    home_team: str,
+) -> str | None:
+    if game_pk is not None:
+        row = db.execute("SELECT id FROM predictions WHERE game_pk=?", (game_pk,)).fetchone()
+        if row:
+            return str(row["id"])
+    if official_date:
+        row = db.execute(
+            """SELECT id FROM predictions
+               WHERE official_date=? AND away_team=? AND home_team=?
+               ORDER BY created_at DESC LIMIT 1""",
+            (official_date, away_team, home_team),
+        ).fetchone()
+        if row:
+            return str(row["id"])
+    return None
 
 
 def save_prediction(payload: dict[str, Any], betting: dict[str, Any] | None = None, *, record_id: str | None = None, created_at: str | None = None) -> str:
     initialize_database()
     prediction = payload["prediction"]
     intelligence = payload.get("intelligence", {})
-    record_id = record_id or str(uuid4())
     created_at = created_at or datetime.now(timezone.utc).isoformat()
+    game_pk_raw = payload.get("game_pk")
+    game_pk = int(game_pk_raw) if game_pk_raw not in (None, "") else None
+    official_date = payload.get("official_date") or (_date_from_timestamp(created_at) if game_pk is not None else None)
+    away_team = payload["matchup"]["away"]
+    home_team = payload["matchup"]["home"]
     best_value = (betting or {}).get("best_value") or {}
     feature_payload = {
         "away_team": payload.get("away_team", {}),
@@ -70,30 +167,45 @@ def save_prediction(payload: dict[str, Any], betting: dict[str, Any] | None = No
         "home_pitcher": payload.get("home_pitcher", {}),
         "factors": intelligence.get("factors", []),
     }
+    values = (
+        created_at, away_team, home_team, prediction["winner"],
+        float(prediction["away_probability"]), float(prediction["home_probability"]),
+        prediction.get("confidence"), prediction.get("confidence_stars"),
+        prediction.get("away_score"), prediction.get("home_score"),
+        intelligence.get("model_version"), game_pk, official_date,
+        next((s.get("odds") for s in (betting or {}).get("sides", []) if s.get("team") == away_team), None),
+        next((s.get("odds") for s in (betting or {}).get("sides", []) if s.get("team") == home_team), None),
+        best_value.get("team"), best_value.get("expected_value"),
+        json.dumps(feature_payload), json.dumps(payload),
+    )
     with connect() as db:
+        existing_id = _find_existing_id(
+            db, game_pk=game_pk, official_date=official_date,
+            away_team=away_team, home_team=home_team,
+        )
+        if existing_id:
+            db.execute(
+                """UPDATE predictions SET
+                   created_at=?, away_team=?, home_team=?, predicted_winner=?,
+                   away_probability=?, home_probability=?, confidence=?, confidence_stars=?,
+                   projected_away=?, projected_home=?, model_version=?, game_pk=?, official_date=?,
+                   away_odds=?, home_odds=?, selected_value_team=?, selected_value_ev=?,
+                   feature_json=?, payload_json=?
+                   WHERE id=?""",
+                values + (existing_id,),
+            )
+            return existing_id
+
+        record_id = record_id or str(uuid4())
         db.execute(
-            """
-            INSERT INTO predictions (
+            """INSERT INTO predictions (
                 id, created_at, away_team, home_team, predicted_winner,
                 away_probability, home_probability, confidence, confidence_stars,
-                projected_away, projected_home, model_version,
+                projected_away, projected_home, model_version, game_pk, official_date,
                 away_odds, home_odds, selected_value_team, selected_value_ev,
                 feature_json, payload_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                record_id,
-                created_at,
-                payload["matchup"]["away"], payload["matchup"]["home"],
-                prediction["winner"], float(prediction["away_probability"]),
-                float(prediction["home_probability"]), prediction.get("confidence"),
-                prediction.get("confidence_stars"), prediction.get("away_score"),
-                prediction.get("home_score"), intelligence.get("model_version"),
-                next((s.get("odds") for s in (betting or {}).get("sides", []) if s.get("team") == payload["matchup"]["away"]), None),
-                next((s.get("odds") for s in (betting or {}).get("sides", []) if s.get("team") == payload["matchup"]["home"]), None),
-                best_value.get("team"), best_value.get("expected_value"),
-                json.dumps(feature_payload), json.dumps(payload),
-            ),
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (record_id,) + values,
         )
     return record_id
 
@@ -126,6 +238,7 @@ def _row_payload(row: sqlite3.Row) -> dict[str, Any]:
     payload = json.loads(row["payload_json"])
     return {
         "id": row["id"], "created_at": row["created_at"],
+        "game_pk": row["game_pk"], "official_date": row["official_date"],
         "away_team": row["away_team"], "home_team": row["home_team"],
         "winner": row["predicted_winner"],
         "away_probability": row["away_probability"],
@@ -142,6 +255,24 @@ def _row_payload(row: sqlite3.Row) -> dict[str, Any]:
         "model_version": row["model_version"],
         "betting": {"away_odds": row["away_odds"], "home_odds": row["home_odds"], "value_team": row["selected_value_team"], "value_ev": row["selected_value_ev"]},
     }
+
+
+def update_grades(history: list[dict[str, Any]]) -> int:
+    """Persist grading fields calculated by services.performance.grade_predictions."""
+    initialize_database()
+    changed = 0
+    with connect() as db:
+        for item in history:
+            if item.get("result") not in {"win", "loss", "push"}:
+                continue
+            actual = item.get("actual") or {}
+            cursor = db.execute(
+                """UPDATE predictions SET result=?, actual_winner=?,
+                   actual_away_score=?, actual_home_score=? WHERE id=?""",
+                (item.get("result"), actual.get("winner"), actual.get("away_score"), actual.get("home_score"), item.get("id")),
+            )
+            changed += cursor.rowcount
+    return changed
 
 
 def summary() -> dict[str, Any]:
@@ -168,30 +299,27 @@ def clear_predictions() -> None:
 
 
 def import_legacy_history(history: list[dict[str, Any]]) -> int:
-    """Import or update legacy JSON history without deleting richer SQLite rows."""
+    """One-time import of legacy JSON history, deduplicated by game/date matchup."""
     initialize_database()
     changed = 0
-    with connect() as db:
-        for item in history:
-            record_id = str(item.get("id") or uuid4())
-            existing = db.execute("SELECT id FROM predictions WHERE id = ?", (record_id,)).fetchone()
-            actual = item.get("actual") or {}
-            if existing:
+    for item in history:
+        created_at = item.get("created_at") or datetime.now(timezone.utc).isoformat()
+        payload = {
+            "game_pk": item.get("game_pk"),
+            "official_date": item.get("official_date") or _date_from_timestamp(created_at),
+            "matchup": {"away": item.get("away_team"), "home": item.get("home_team")},
+            "prediction": {"winner": item.get("winner"), "away_probability": item.get("away_probability", 0), "home_probability": item.get("home_probability", 0), "confidence": item.get("confidence"), "confidence_stars": item.get("confidence_stars"), "away_score": (item.get("projected_score") or {}).get("away"), "home_score": (item.get("projected_score") or {}).get("home"), "reasons": item.get("reasons", [])},
+            "away_team": {"logo": item.get("away_logo")}, "home_team": {"logo": item.get("home_logo")},
+            "away_pitcher": {}, "home_pitcher": {}, "intelligence": {"model_version": item.get("model_version", "legacy")},
+        }
+        record_id = save_prediction(payload, record_id=str(item.get("id") or uuid4()), created_at=created_at)
+        actual = item.get("actual") or {}
+        if item.get("result") in {"win", "loss", "push"}:
+            with connect() as db:
                 db.execute(
                     "UPDATE predictions SET result=?, actual_winner=?, actual_away_score=?, actual_home_score=? WHERE id=?",
                     (item.get("result"), actual.get("winner"), actual.get("away_score"), actual.get("home_score"), record_id),
                 )
-                changed += 1
-                continue
-            payload = {
-                "matchup": {"away": item.get("away_team"), "home": item.get("home_team")},
-                "prediction": {"winner": item.get("winner"), "away_probability": item.get("away_probability", 0), "home_probability": item.get("home_probability", 0), "confidence": item.get("confidence"), "confidence_stars": item.get("confidence_stars"), "away_score": (item.get("projected_score") or {}).get("away"), "home_score": (item.get("projected_score") or {}).get("home"), "reasons": item.get("reasons", [])},
-                "away_team": {"logo": item.get("away_logo")}, "home_team": {"logo": item.get("home_logo")},
-                "away_pitcher": {}, "home_pitcher": {}, "intelligence": {"model_version": item.get("model_version", "legacy")},
-            }
-            db.execute(
-                """INSERT INTO predictions (id,created_at,away_team,home_team,predicted_winner,away_probability,home_probability,confidence,confidence_stars,projected_away,projected_home,model_version,actual_winner,actual_away_score,actual_home_score,result,feature_json,payload_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (record_id, item.get("created_at") or datetime.now(timezone.utc).isoformat(), item.get("away_team"), item.get("home_team"), item.get("winner"), float(item.get("away_probability",0)), float(item.get("home_probability",0)), item.get("confidence"), item.get("confidence_stars"), (item.get("projected_score") or {}).get("away"), (item.get("projected_score") or {}).get("home"), item.get("model_version","legacy"), actual.get("winner"), actual.get("away_score"), actual.get("home_score"), item.get("result"), "{}", json.dumps(payload)),
-            )
-            changed += 1
+        changed += 1
+    initialize_database()
     return changed

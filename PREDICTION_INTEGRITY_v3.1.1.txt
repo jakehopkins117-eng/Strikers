@@ -1,0 +1,34 @@
+STRIKERS v3.1.1 — PREDICTION INTEGRITY
+
+What changed
+- Scheduled-game predictions now send MLB gamePk and official_date from the React frontend.
+- Re-running the same MLB game updates its existing SQLite record instead of adding a new record.
+- Dashboard/history totals now use one SQLite row per game.
+- Existing repeated legacy checks for the same matchup on the same calendar date are collapsed to the newest record when the database initializes.
+- The legacy JSON history is also updated in place for repeated scheduled-game predictions.
+- Manual matchup predictions still work. Scheduled games provide the strongest duplicate protection because they include MLB gamePk.
+
+Files changed
+- web_api.py
+- services/prediction_database.py
+- frontend/src/App.tsx
+
+How to run
+1. Backend:
+   cd "C:\Users\Jake Hopkins\Desktop\Strikers"
+   python -m uvicorn web_api:app --reload
+
+2. Frontend (new PowerShell window):
+   cd "C:\Users\Jake Hopkins\Desktop\Strikers\frontend"
+   npm.cmd run dev
+
+How to verify
+1. Open today's schedule.
+2. Run the same scheduled game prediction three times.
+3. Open Prediction History or Dashboard.
+4. The game should appear once and the total should increase by only one.
+
+Validation performed
+- Python syntax compilation passed.
+- SQLite integration test passed: two saves with the same gamePk produced one row and updated the stored probability.
+- TypeScript compilation passed. The Vite packaging step could not be completed in the Linux validation environment because the uploaded node_modules contains Windows-native dependencies; run npm.cmd install if Windows reports a frontend dependency issue.

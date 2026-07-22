@@ -1,4 +1,4 @@
-﻿"""
+"""
 Strikers Prediction Engine 4.0
 
 This module provides an object-oriented MLB matchup prediction engine.
@@ -14,6 +14,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from math import tanh
 from typing import Any
+
+from services.bullpen import BullpenData, get_bullpen_intelligence
 
 from api.mlb_api import (
     find_team,
@@ -173,7 +175,8 @@ class PredictionEngine:
     """Create and display a pitcher-aware MLB matchup prediction."""
 
     TEAM_WEIGHT = 70.0
-    PITCHER_WEIGHT = 25.0
+    PITCHER_WEIGHT = 20.0
+    BULLPEN_WEIGHT = 10.0
     HOME_FIELD_POINTS = 5.0
     MAX_PROBABILITY = 80.0
     PROBABILITY_SHRINK = 0.85
@@ -185,6 +188,8 @@ class PredictionEngine:
         self.home_data: TeamData | None = None
         self.away_pitcher = PitcherData()
         self.home_pitcher = PitcherData()
+        self.away_bullpen = BullpenData(team_id=0, team_name="Away Team")
+        self.home_bullpen = BullpenData(team_id=0, team_name="Home Team")
         self.factor_edges: list[tuple[str, str]] = []
 
     def run(self) -> None:
@@ -207,6 +212,7 @@ class PredictionEngine:
 
             self.load_team_data()
             self.load_probable_pitchers()
+            self.load_bullpens()
             result = self.generate_prediction()
             self.display_report(result)
 
@@ -239,6 +245,8 @@ class PredictionEngine:
         self.home_data = None
         self.away_pitcher = PitcherData()
         self.home_pitcher = PitcherData()
+        self.away_bullpen = BullpenData(team_id=0, team_name="Away Team")
+        self.home_bullpen = BullpenData(team_id=0, team_name="Home Team")
         self.factor_edges = []
 
         self.away_team = find_team(away_search)
@@ -257,6 +265,7 @@ class PredictionEngine:
 
         self.load_team_data()
         self.load_probable_pitchers()
+        self.load_bullpens()
 
         return self.generate_prediction()
     @staticmethod
@@ -428,6 +437,48 @@ class PredictionEngine:
             available=bool(stats),
         )
 
+    def load_bullpens(self) -> None:
+        """Load recent bullpen workload for both clubs."""
+
+        assert self.away_data is not None
+        assert self.home_data is not None
+
+        self.away_bullpen = get_bullpen_intelligence(
+            self.away_data.team_id, self.away_data.name
+        )
+        self.home_bullpen = get_bullpen_intelligence(
+            self.home_data.team_id, self.home_data.name
+        )
+
+    def score_bullpens(self) -> tuple[float, float]:
+        """Award model points using availability first, then relief quality."""
+
+        assert self.away_data is not None
+        assert self.home_data is not None
+
+        points = self.BULLPEN_WEIGHT
+        if not self.away_bullpen.available and not self.home_bullpen.available:
+            return points / 2, points / 2
+
+        away_value = self.away_bullpen.availability_score
+        home_value = self.home_bullpen.availability_score
+        away_points, home_points = self.award_factor(
+            "Bullpen availability", away_value, home_value, points * 0.7, True, 30.0
+        )
+
+        if self.away_bullpen.season_era and self.home_bullpen.season_era:
+            era_away, era_home = self.award_factor(
+                "Bullpen ERA", self.away_bullpen.season_era, self.home_bullpen.season_era,
+                points * 0.3, False, 1.5
+            )
+            away_points += era_away
+            home_points += era_home
+        else:
+            away_points += points * 0.15
+            home_points += points * 0.15
+
+        return away_points, home_points
+
     def generate_prediction(self) -> ModelResult:
         """Score the matchup and produce calibrated win probabilities."""
 
@@ -441,12 +492,12 @@ class PredictionEngine:
         team_factors = [
             ("Season record", self.away_data.win_pct, self.home_data.win_pct, 10.0, True, 0.120),
             ("Home/away performance", self.away_data.location_win_pct, self.home_data.location_win_pct, 7.0, True, 0.150),
-            ("OPS", self.away_data.ops, self.home_data.ops, 12.0, True, 0.100),
+            ("OPS", self.away_data.ops, self.home_data.ops, 10.0, True, 0.100),
             ("Runs per game", self.away_data.runs_per_game, self.home_data.runs_per_game, 10.0, True, 1.50),
             ("Team ERA", self.away_data.era, self.home_data.era, 8.0, False, 1.50),
             ("Team WHIP", self.away_data.whip, self.home_data.whip, 5.0, False, 0.35),
             ("Recent record", self.away_data.recent_win_pct, self.home_data.recent_win_pct, 8.0, True, 0.250),
-            ("Recent run differential", self.away_data.recent_run_differential_per_game, self.home_data.recent_run_differential_per_game, 10.0, True, 3.00),
+            ("Recent run differential", self.away_data.recent_run_differential_per_game, self.home_data.recent_run_differential_per_game, 7.0, True, 3.00),
         ]
 
         for label, away_value, home_value, points, higher_is_better, scale in team_factors:
@@ -459,6 +510,10 @@ class PredictionEngine:
         pitcher_away, pitcher_home = self.score_pitchers()
         away_score += pitcher_away
         home_score += pitcher_home
+
+        bullpen_away, bullpen_home = self.score_bullpens()
+        away_score += bullpen_away
+        home_score += bullpen_home
         self.factor_edges.append(("Home-field advantage", self.home_data.name))
 
         total = away_score + home_score
