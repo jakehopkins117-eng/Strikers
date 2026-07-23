@@ -230,3 +230,6 @@ button.dna-component.selected { transform:translateY(-2px); border-color:rgba(25
     grid-row: auto;
   }
 }
+
+/* Self-learning AI */
+.learning-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.25rem}.learning-badge{border-radius:999px;padding:.5rem .8rem;font-size:.72rem;font-weight:800;letter-spacing:.08em;white-space:nowrap}.learning-badge.active{background:rgba(58,210,159,.14);color:#72e6bd;border:1px solid rgba(58,210,159,.3)}.learning-badge.collecting{background:rgba(246,184,71,.12);color:#f6c76b;border:1px solid rgba(246,184,71,.25)}.learning-stats{margin-bottom:1.25rem}.learning-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:1.25rem}.learning-grid .calibration-row{grid-template-columns:minmax(150px,1.4fr) 1fr .8fr}@media(max-width:900px){.learning-grid{grid-template-columns:1fr}.learning-header{flex-direction:column}.learning-grid .calibration-row{grid-template-columns:1fr}}

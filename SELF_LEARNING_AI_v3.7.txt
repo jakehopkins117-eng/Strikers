@@ -1,0 +1,28 @@
+STRIKERS v3.7 — SELF-LEARNING AI
+
+What it does
+- Studies every graded prediction.
+- Compares average model confidence with actual win rate.
+- Tracks results for pitcher, bullpen, lineup, injury, home-team, high-confidence, margin, and sportsbook-value signals.
+- Activates a small calibration correction after 40 graded games.
+- Caps the correction at +/-2.5 probability points and never rewrites core model weights.
+- Displays progress, factor lift, learned correction, and model takeaways on Model Performance.
+
+New endpoints
+GET  /self-learning/status
+POST /self-learning/analyze
+
+Optional .env settings
+SELF_LEARNING_ENABLED=true
+SELF_LEARNING_MIN_GRADED=40
+SELF_LEARNING_MIN_FACTOR_SAMPLE=15
+SELF_LEARNING_MAX_CORRECTION=2.5
+
+Files changed
+- web_api.py
+- frontend/src/App.tsx
+- frontend/src/App.css
+
+New files
+- services/model_learning.py
+- SELF_LEARNING_AI_v3.7.txt

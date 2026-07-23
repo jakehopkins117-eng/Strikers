@@ -97,6 +97,18 @@ type PredictionResponse = {
   };
 };
 
+type AutomationStatus = {
+  enabled: boolean;
+  running: boolean;
+  last_started_at: string | null;
+  last_completed_at: string | null;
+  last_date: string | null;
+  games_found: number;
+  predictions_saved: number;
+  failures: { matchup: string; reason: string }[];
+  last_error: string | null;
+};
+
 type BestBet = {
   game: Game;
   winner: string;
@@ -228,6 +240,8 @@ function App() {
   const [propAnalysis, setPropAnalysis] = useState<PropAnalysis | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [performance, setPerformance] = useState<Performance | null>(null);
+  const [automation, setAutomation] = useState<AutomationStatus | null>(null);
+  const [runningAutomation, setRunningAutomation] = useState(false);
   const [weatherGames, setWeatherGames] = useState<WeatherGame[]>([]);
   const [loadingPerformance, setLoadingPerformance] = useState(false);
   const [loadingWeather, setLoadingWeather] = useState(false);
@@ -384,11 +398,34 @@ function App() {
     }
   }
 
+  async function runAutomaticSlate() {
+    setRunningAutomation(true); setError("");
+    try {
+      const response = await fetch(`${API_URL}/automation/run-full-slate?date=${selectedDate}`, { method: "POST" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.detail ?? "Automatic predictions failed.");
+      setAutomation(payload as AutomationStatus);
+      setHistory([]);
+      setPerformance(null);
+      await loadPerformance(true);
+    } catch (requestError) {
+      setError(errorMessage(requestError, "Could not run the full slate."));
+    } finally { setRunningAutomation(false); }
+  }
+
+  async function loadAutomationStatus() {
+    try {
+      const response = await fetch(`${API_URL}/automation/status`);
+      const payload = await response.json();
+      if (response.ok) setAutomation(payload as AutomationStatus);
+    } catch { /* backend status is optional */ }
+  }
+
   async function loadPerformance(force = false) {
     setActivePage("Model Performance");
     if (performance && !force) return;
     setLoadingPerformance(true); setError("");
-    try { const response = await fetch(`${API_URL}/model-performance?refresh=true`); const payload = await response.json(); if(!response.ok) throw new Error(payload.detail ?? "Performance failed."); setPerformance(payload as Performance); }
+    try { const response = await fetch(`${API_URL}/model-performance?refresh=true`); const payload = await response.json(); if(!response.ok) throw new Error(payload.detail ?? "Performance failed."); setPerformance(payload as Performance); await loadAutomationStatus(); }
     catch(requestError){ setError(errorMessage(requestError,"Could not load model performance.")); } finally { setLoadingPerformance(false); }
   }
 
@@ -782,7 +819,7 @@ function App() {
   function renderPerformance() {
     const summary = performance?.summary;
     return <>
-      <section className="section-heading bets-heading"><div><p className="eyebrow">MODEL ACCOUNTABILITY</p><h3>Model Performance</h3><p>Automatic result grading, confidence calibration, and flat-stake ROI.</p></div><button className="secondary-button" type="button" onClick={() => void loadPerformance(true)}>Grade & Refresh</button></section>
+      <section className="section-heading bets-heading"><div><p className="eyebrow">MODEL ACCOUNTABILITY</p><h3>Model Performance</h3><p>Every scheduled game is predicted automatically and saved for grading.</p>{automation && <p className="muted">Automation {automation.enabled ? "ON" : "OFF"} · {automation.predictions_saved} saved from {automation.games_found} games{automation.last_completed_at ? ` · Last run ${formatDateTime(automation.last_completed_at)}` : ""}</p>}</div><div className="history-actions"><button className="secondary-button" type="button" disabled={runningAutomation || automation?.running} onClick={() => void runAutomaticSlate()}>{runningAutomation || automation?.running ? "Running Full Slate…" : "Run Full Slate Now"}</button><button className="secondary-button" type="button" onClick={() => void loadPerformance(true)}>Grade & Refresh</button></div></section>
       {loadingPerformance ? <LoadingCard text="Grading predictions and calculating performance…" /> : !performance ? <EmptyState title="No performance data yet" text="Run predictions, then return after games become final." /> : <>
         <section className="stats-grid"><StatCard label="Accuracy" value={`${summary?.accuracy.toFixed(1)}%`} note={`${summary?.wins}-${summary?.losses} graded record`} positive={(summary?.accuracy ?? 0)>=55}/><StatCard label="Units" value={`${(summary?.units ?? 0)>=0?'+':''}${summary?.units.toFixed(2)}`} note="1 unit per pick at -110" positive={(summary?.units ?? 0)>=0}/><StatCard label="ROI" value={`${(summary?.roi ?? 0)>=0?'+':''}${summary?.roi.toFixed(1)}%`} note={`${summary?.graded_predictions} graded · ${summary?.pending_predictions} pending`} positive={(summary?.roi ?? 0)>=0}/><StatCard label="Current streak" value={`${summary?.current_streak ?? 0} ${(summary?.streak_type ?? '').toUpperCase()}`} note="Most recent graded picks" positive={summary?.streak_type==='win'}/></section>
         <section className="analytics-grid"><article className="panel"><p className="eyebrow">CONFIDENCE TIERS</p><h3>Accuracy by model confidence</h3><div className="metric-bars">{performance.confidence_tiers.map(row=><div className="metric-bar" key={row.tier}><div><strong>{row.tier}</strong><span>{row.wins}/{row.predictions} · {row.accuracy.toFixed(1)}%</span></div><div className="probability-track"><div className="probability-fill" style={{width:`${row.accuracy}%`}}/></div></div>)}</div></article>
@@ -813,7 +850,7 @@ function App() {
     return (
       <>
         <section className="section-heading bets-heading">
-          <div><p className="eyebrow">SAVED MODEL OUTPUT</p><h3>Prediction History</h3><p>Every manually generated prediction is stored automatically.</p></div>
+          <div><p className="eyebrow">SAVED MODEL OUTPUT</p><h3>Prediction History</h3><p>Every manual and full-slate prediction is stored automatically.</p></div>
           <div className="history-actions">
             <button className="secondary-button" type="button" onClick={() => void loadHistory(true)}>Refresh</button>
             <button className="danger-button" type="button" onClick={() => void clearHistory()}>Clear History</button>
@@ -821,7 +858,7 @@ function App() {
         </section>
 
         {loadingHistory ? <LoadingCard text="Loading saved predictions…" /> :
-         history.length === 0 ? <EmptyState title="No saved predictions yet" text="Run a matchup prediction and it will appear here automatically." /> :
+         history.length === 0 ? <EmptyState title="No saved predictions yet" text="Start the backend or run the full slate, and every scheduled game will appear here automatically." /> :
          <section className="history-grid">
            {history.map((item) => {
              const probability = Math.max(item.away_probability, item.home_probability);

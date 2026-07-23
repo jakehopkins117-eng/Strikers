@@ -20,8 +20,10 @@ from datetime import date as date_type, datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
-from threading import Lock
+from threading import Event, Lock, Thread
 from typing import Any
+import os
+import time
 from uuid import uuid4
 
 import requests
@@ -43,6 +45,7 @@ from services.prediction_database import (
     summary as database_summary,
 )
 from services.ml_foundation import model_status, second_opinion
+from services.model_learning import analyze_history, apply_learning_adjustment, learning_status
 from services.odds import get_matchup_odds, odds_status
 from services.bet_score import build_sportsbook_intelligence
 from services.lineup_injuries import (
@@ -70,6 +73,24 @@ app.add_middleware(
 MLB_STATS_API = "https://statsapi.mlb.com/api/v1"
 HISTORY_PATH = Path(__file__).resolve().parent / "data" / "prediction_history.json"
 HISTORY_LOCK = Lock()
+
+AUTO_PREDICTIONS_ENABLED = os.getenv("AUTO_PREDICTIONS_ENABLED", "true").strip().lower() not in {"0", "false", "no", "off"}
+AUTO_PREDICTIONS_INTERVAL_SECONDS = max(900, int(os.getenv("AUTO_PREDICTIONS_INTERVAL_SECONDS", "14400")))
+AUTO_PREDICTIONS_INITIAL_DELAY_SECONDS = max(1, int(os.getenv("AUTO_PREDICTIONS_INITIAL_DELAY_SECONDS", "8")))
+AUTO_PREDICTIONS_STOP = Event()
+AUTO_PREDICTIONS_LOCK = Lock()
+AUTO_PREDICTIONS_STATE: dict[str, Any] = {
+    "enabled": AUTO_PREDICTIONS_ENABLED,
+    "running": False,
+    "last_started_at": None,
+    "last_completed_at": None,
+    "last_date": None,
+    "games_found": 0,
+    "predictions_saved": 0,
+    "failures": [],
+    "last_error": None,
+    "next_run_in_seconds": AUTO_PREDICTIONS_INITIAL_DELAY_SECONDS if AUTO_PREDICTIONS_ENABLED else None,
+}
 
 
 class PredictionRequest(BaseModel):
@@ -357,6 +378,14 @@ def _save_prediction(payload: dict[str, Any]) -> dict[str, Any]:
         "confidence_stars": prediction["confidence_stars"],
         "projected_score": {"away": prediction.get("away_score"), "home": prediction.get("home_score")},
         "reasons": prediction.get("reasons", []),
+        "learning_features": {
+            "projected_run_margin": abs(float(prediction.get("home_score") or 0) - float(prediction.get("away_score") or 0)),
+            "starting_pitcher_edge": any("pitcher" in str(reason).lower() for reason in prediction.get("reasons", [])),
+            "bullpen_edge": any("bullpen" in str(reason).lower() for reason in prediction.get("reasons", [])),
+            "lineup_adjustment": (payload.get("prediction_adjustments") or {}).get("lineup_adjustment", 0),
+            "injury_adjustment": (payload.get("prediction_adjustments") or {}).get("injury_adjustment", 0),
+            "sportsbook_value": bool(((payload.get("sportsbook_intelligence") or {}).get("best_value") or {}).get("best_odds")),
+        },
         "away_logo": payload["away_team"].get("logo"),
         "home_logo": payload["home_team"].get("logo"),
     }
@@ -620,7 +649,9 @@ def _run_prediction(
         "injury_intelligence": injury_intelligence,
     }
     adjustments = apply_lineup_injury_adjustment(prediction, matchup, lineup_intelligence, injury_intelligence)
+    learning_adjustment = apply_learning_adjustment(prediction, matchup)
     payload["prediction_adjustments"] = adjustments
+    payload["self_learning_adjustment"] = learning_adjustment
     payload["intelligence"] = build_model_intelligence(payload)
     payload["game_analyst"] = build_game_analyst(payload, adjustments)
     payload["betting_intelligence"] = evaluate_moneyline(
@@ -902,6 +933,99 @@ def live_games(
         "live_count": sum(1 for game in games if game["status"]["abstract"] == "Live"),
         "games": games,
     }
+
+
+def _run_full_slate_predictions(game_date: str | None = None) -> dict[str, Any]:
+    target_date = game_date or date_type.today().isoformat()
+    if not AUTO_PREDICTIONS_LOCK.acquire(blocking=False):
+        return {**AUTO_PREDICTIONS_STATE, "message": "An automatic prediction run is already in progress."}
+
+    started = datetime.now(timezone.utc).isoformat()
+    AUTO_PREDICTIONS_STATE.update({
+        "running": True, "last_started_at": started, "last_date": target_date,
+        "games_found": 0, "predictions_saved": 0, "failures": [], "last_error": None,
+    })
+    try:
+        slate = schedule(target_date)
+        games = slate.get("games", [])
+        saved = 0
+        failures: list[dict[str, str]] = []
+        for game in games:
+            away = game.get("away", {}).get("name")
+            home = game.get("home", {}).get("name")
+            if not away or not home:
+                continue
+            try:
+                _run_prediction(
+                    away, home, save_history=True,
+                    game_pk=game.get("game_pk"),
+                    official_date=game.get("official_date") or target_date,
+                )
+                saved += 1
+            except Exception as error:
+                detail = getattr(error, "detail", str(error))
+                failures.append({"matchup": f"{away} at {home}", "reason": str(detail)})
+
+        # Grade any games that have already become final.
+        try:
+            history = _read_history()
+            graded, changed = grade_predictions(history, schedule)
+            if changed:
+                _write_history(graded)
+                import_legacy_history(graded)
+        except Exception:
+            changed = 0
+
+        completed = datetime.now(timezone.utc).isoformat()
+        AUTO_PREDICTIONS_STATE.update({
+            "running": False, "last_completed_at": completed,
+            "games_found": len(games), "predictions_saved": saved,
+            "failures": failures, "last_error": None,
+            "next_run_in_seconds": AUTO_PREDICTIONS_INTERVAL_SECONDS,
+        })
+        return {**AUTO_PREDICTIONS_STATE, "graded": changed}
+    except Exception as error:
+        AUTO_PREDICTIONS_STATE.update({
+            "running": False, "last_completed_at": datetime.now(timezone.utc).isoformat(),
+            "last_error": str(getattr(error, "detail", error)),
+            "next_run_in_seconds": AUTO_PREDICTIONS_INTERVAL_SECONDS,
+        })
+        return dict(AUTO_PREDICTIONS_STATE)
+    finally:
+        AUTO_PREDICTIONS_LOCK.release()
+
+
+def _automatic_prediction_loop() -> None:
+    if AUTO_PREDICTIONS_STOP.wait(AUTO_PREDICTIONS_INITIAL_DELAY_SECONDS):
+        return
+    while not AUTO_PREDICTIONS_STOP.is_set():
+        _run_full_slate_predictions()
+        if AUTO_PREDICTIONS_STOP.wait(AUTO_PREDICTIONS_INTERVAL_SECONDS):
+            break
+
+
+@app.on_event("startup")
+def start_automatic_predictions() -> None:
+    initialize_database()
+    if AUTO_PREDICTIONS_ENABLED:
+        Thread(target=_automatic_prediction_loop, name="strikers-auto-predictions", daemon=True).start()
+
+
+@app.on_event("shutdown")
+def stop_automatic_predictions() -> None:
+    AUTO_PREDICTIONS_STOP.set()
+
+
+@app.get("/automation/status")
+def automatic_predictions_status() -> dict[str, Any]:
+    return dict(AUTO_PREDICTIONS_STATE)
+
+
+@app.post("/automation/run-full-slate")
+def run_full_slate_predictions(
+    game_date: str = Query(default_factory=lambda: date_type.today().isoformat(), alias="date"),
+) -> dict[str, Any]:
+    return _run_full_slate_predictions(game_date)
 
 
 @app.post("/predict")
@@ -1306,7 +1430,24 @@ def model_performance(refresh: bool = Query(default=True)) -> dict[str, Any]:
     # Always persist the deduplicated view so all future metrics stay clean.
     _write_history(history)
     import_legacy_history(history)
-    return build_performance(history)
+    performance = build_performance(history)
+    performance["self_learning"] = analyze_history(history)
+    return performance
+
+
+@app.get("/self-learning/status")
+def self_learning_status() -> dict[str, Any]:
+    return learning_status()
+
+
+@app.post("/self-learning/analyze")
+def run_self_learning_analysis() -> dict[str, Any]:
+    history = _dedupe_history(_read_history())
+    graded, changed = grade_predictions(history, schedule)
+    if changed:
+        _write_history(graded)
+        import_legacy_history(graded)
+    return analyze_history(graded)
 
 
 @app.get("/model-lab")
