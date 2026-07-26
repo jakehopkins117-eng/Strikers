@@ -1,19 +1,1279 @@
 [
   {
-    "id": "fe346492-bee2-4210-8d58-099ec48eba78",
-    "created_at": "2026-07-23T05:55:54.214692+00:00",
+    "id": "bfabe75e-4eb3-4c6b-886e-647685ef31bb",
+    "created_at": "2026-07-26T02:07:15.075379+00:00",
+    "game_pk": 822869,
+    "official_date": "2026-07-25",
+    "away_team": "Seattle Mariners",
+    "home_team": "Texas Rangers",
+    "winner": "Texas Rangers",
+    "away_probability": 46.65,
+    "home_probability": 53.35,
+    "confidence": "Low",
+    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "projected_score": {
+      "away": 47.159851620353834,
+      "home": 57.840148379646166
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Recent record",
+      "Starter ERA"
+    ],
+    "learning_features": {
+      "projected_run_margin": 10.680296759292332,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": 0.27,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/136.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/140.svg",
+    "actual": {
+      "winner": "Texas Rangers",
+      "away_score": 1,
+      "home_score": 7
+    },
+    "result": "win",
+    "graded_at": "2026-07-26T02:07:15.274545Z"
+  },
+  {
+    "id": "1af719fc-d4de-45e5-827a-cf4c0cd17453",
+    "created_at": "2026-07-26T02:07:12.333159+00:00",
+    "game_pk": 823027,
+    "official_date": "2026-07-25",
+    "away_team": "Cincinnati Reds",
+    "home_team": "St. Louis Cardinals",
+    "winner": "St. Louis Cardinals",
+    "away_probability": 46.53,
+    "home_probability": 53.47,
+    "confidence": "Low",
+    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "projected_score": {
+      "away": 47.47390628763054,
+      "home": 56.38026037903613
+    },
+    "reasons": [
+      "Season record",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP",
+      "Starter ERA",
+      "Starter WHIP"
+    ],
+    "learning_features": {
+      "projected_run_margin": 8.90635409140559,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.53,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/113.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/138.svg",
+    "actual": {
+      "winner": "St. Louis Cardinals",
+      "away_score": 0,
+      "home_score": 7
+    },
+    "result": "win",
+    "graded_at": "2026-07-26T02:07:15.274563Z"
+  },
+  {
+    "id": "a3504a78-04a1-4a6e-a897-a4f8a322c49d",
+    "created_at": "2026-07-26T02:07:09.356928+00:00",
+    "game_pk": 823600,
+    "official_date": "2026-07-25",
+    "away_team": "Los Angeles Dodgers",
+    "home_team": "New York Mets",
+    "winner": "Los Angeles Dodgers",
+    "away_probability": 70.25,
+    "home_probability": 29.75,
+    "confidence": "High",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2605",
+    "projected_score": {
+      "away": 76.75606396797622,
+      "home": 28.243936032023772
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP"
+    ],
+    "learning_features": {
+      "projected_run_margin": 48.51212793595245,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": 1.31,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/119.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/121.svg",
+    "actual": {
+      "winner": "Los Angeles Dodgers",
+      "away_score": 4,
+      "home_score": 3
+    },
+    "result": "win",
+    "graded_at": "2026-07-26T02:07:15.274570Z"
+  },
+  {
+    "id": "6013ad36-2472-47af-9a81-1498038e1f70",
+    "created_at": "2026-07-26T02:07:06.508795+00:00",
+    "game_pk": 823758,
+    "official_date": "2026-07-25",
+    "away_team": "Colorado Rockies",
+    "home_team": "Milwaukee Brewers",
+    "winner": "Milwaukee Brewers",
+    "away_probability": 29.14,
+    "home_probability": 70.86,
+    "confidence": "High",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2605",
+    "projected_score": {
+      "away": 25.885765115351916,
+      "home": 79.11423488464808
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP",
+      "Recent record"
+    ],
+    "learning_features": {
+      "projected_run_margin": 53.22846976929617,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.02,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/115.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/158.svg",
+    "actual": {
+      "winner": "Milwaukee Brewers",
+      "away_score": 5,
+      "home_score": 8
+    },
+    "result": "win",
+    "graded_at": "2026-07-26T02:07:15.274576Z"
+  },
+  {
+    "id": "de6cb684-1b5a-4bae-aabd-507cc0b83f05",
+    "created_at": "2026-07-26T02:07:03.902598+00:00",
+    "game_pk": 824571,
+    "official_date": "2026-07-25",
+    "away_team": "Houston Astros",
+    "home_team": "Chicago White Sox",
+    "winner": "Chicago White Sox",
+    "away_probability": 41.6,
+    "home_probability": 58.4,
+    "confidence": "Moderate",
+    "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
+    "projected_score": {
+      "away": 41.33232277427816,
+      "home": 63.66767722572184
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP",
+      "Starter ERA"
+    ],
+    "learning_features": {
+      "projected_run_margin": 22.335354451443678,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.06,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/117.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/145.svg",
+    "actual": {
+      "winner": "Houston Astros",
+      "away_score": 4,
+      "home_score": 1
+    },
+    "result": "loss",
+    "graded_at": "2026-07-26T02:07:15.274582Z"
+  },
+  {
+    "id": "4dd7d8e1-9a21-4ccf-9576-30ea52ff2814",
+    "created_at": "2026-07-26T02:07:01.096900+00:00",
+    "game_pk": 823679,
+    "official_date": "2026-07-25",
+    "away_team": "Athletics",
+    "home_team": "Minnesota Twins",
+    "winner": "Minnesota Twins",
+    "away_probability": 39.56,
+    "home_probability": 60.44,
+    "confidence": "Moderate",
+    "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
+    "projected_score": {
+      "away": 37.373482615064034,
+      "home": 64.89735071826931
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP",
+      "Recent record"
+    ],
+    "learning_features": {
+      "projected_run_margin": 27.523868103205274,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": 0.3,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/133.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/142.svg",
+    "actual": {
+      "winner": "Minnesota Twins",
+      "away_score": 0,
+      "home_score": 2
+    },
+    "result": "win",
+    "graded_at": "2026-07-26T02:07:15.274588Z"
+  },
+  {
+    "id": "b3007640-a3d0-450e-9ad6-af854449ba79",
+    "created_at": "2026-07-26T02:06:58.091862+00:00",
+    "game_pk": 824811,
+    "official_date": "2026-07-25",
+    "away_team": "Atlanta Braves",
+    "home_team": "Baltimore Orioles",
+    "winner": "Atlanta Braves",
+    "away_probability": 51.87,
+    "home_probability": 48.13,
+    "confidence": "Low",
+    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "projected_score": {
+      "away": 55.22951994592233,
+      "home": 49.77048005407767
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP"
+    ],
+    "learning_features": {
+      "projected_run_margin": 5.459039891844654,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": 0.36,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/144.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/110.svg",
+    "actual": {
+      "winner": "Baltimore Orioles",
+      "away_score": 2,
+      "home_score": 3
+    },
+    "result": "loss",
+    "graded_at": "2026-07-26T02:07:15.274593Z"
+  },
+  {
+    "id": "842f3e2d-56a5-4de1-8107-e0d4632d57e1",
+    "created_at": "2026-07-26T02:06:54.918280+00:00",
+    "game_pk": 823355,
+    "official_date": "2026-07-25",
+    "away_team": "Chicago Cubs",
+    "home_team": "Pittsburgh Pirates",
+    "winner": "Chicago Cubs",
+    "away_probability": 56.73,
+    "home_probability": 43.27,
+    "confidence": "Low",
+    "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
+    "projected_score": {
+      "away": 58.875929805813705,
+      "home": 46.124070194186295
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "Team WHIP",
+      "Recent record",
+      "Recent run differential",
+      "Bullpen availability"
+    ],
+    "learning_features": {
+      "projected_run_margin": 12.75185961162741,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": true,
+      "lineup_adjustment": 2.27,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/112.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/134.svg",
+    "actual": {
+      "winner": "Chicago Cubs",
+      "away_score": 11,
+      "home_score": 0
+    },
+    "result": "win",
+    "graded_at": "2026-07-26T02:07:15.274599Z"
+  },
+  {
+    "id": "825e35d0-4242-4b7b-b27e-8698284dc7bd",
+    "created_at": "2026-07-26T02:06:51.961092+00:00",
+    "game_pk": 822948,
+    "official_date": "2026-07-25",
+    "away_team": "Cleveland Guardians",
+    "home_team": "Tampa Bay Rays",
+    "winner": "Tampa Bay Rays",
+    "away_probability": 34.22,
+    "home_probability": 65.78,
+    "confidence": "High",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 32.4460122556499,
+      "home": 72.5539877443501
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Team WHIP",
+      "Recent record"
+    ],
+    "learning_features": {
+      "projected_run_margin": 40.1079754887002,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.25,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/114.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/139.svg",
+    "actual": {
+      "winner": "Tampa Bay Rays",
+      "away_score": 0,
+      "home_score": 3
+    },
+    "result": "win",
+    "graded_at": "2026-07-26T02:07:15.274604Z"
+  },
+  {
+    "id": "ea2d25c4-f941-49d1-9d69-c046fe7ee0ba",
+    "created_at": "2026-07-26T02:06:48.898863+00:00",
+    "game_pk": 823435,
+    "official_date": "2026-07-25",
+    "away_team": "New York Yankees",
+    "home_team": "Philadelphia Phillies",
+    "winner": "New York Yankees",
+    "away_probability": 55.29,
+    "home_probability": 44.71,
+    "confidence": "Low",
+    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "projected_score": {
+      "away": 59.86512598450745,
+      "home": 45.13487401549254
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP"
+    ],
+    "learning_features": {
+      "projected_run_margin": 14.730251969014908,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": 0.03,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/147.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/143.svg",
+    "actual": {
+      "winner": "New York Yankees",
+      "away_score": 3,
+      "home_score": 1
+    },
+    "result": "win",
+    "graded_at": "2026-07-26T02:07:15.274609Z"
+  },
+  {
+    "id": "5c73218c-ce4b-4ccc-b100-07ebedccb6e3",
+    "created_at": "2026-07-26T02:06:46.028677+00:00",
+    "game_pk": 823841,
+    "official_date": "2026-07-25",
+    "away_team": "San Diego Padres",
+    "home_team": "Miami Marlins",
+    "winner": "Miami Marlins",
+    "away_probability": 39.9,
+    "home_probability": 60.1,
+    "confidence": "Moderate",
+    "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
+    "projected_score": {
+      "away": 40.81722649456122,
+      "home": 64.18277350543879
+    },
+    "reasons": [
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP",
+      "Starter ERA"
+    ],
+    "learning_features": {
+      "projected_run_margin": 23.36554701087757,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -1.34,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/135.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/146.svg",
+    "actual": {
+      "winner": "San Diego Padres",
+      "away_score": 7,
+      "home_score": 2
+    },
+    "result": "loss",
+    "graded_at": "2026-07-26T02:07:15.274614Z"
+  },
+  {
+    "id": "6c090ad1-cb1c-4581-bf4d-bfd2bd151ae3",
+    "created_at": "2026-07-26T02:06:42.929158+00:00",
+    "game_pk": 824734,
+    "official_date": "2026-07-25",
+    "away_team": "Toronto Blue Jays",
+    "home_team": "Boston Red Sox",
+    "winner": "Boston Red Sox",
+    "away_probability": 40.04,
+    "home_probability": 59.96,
+    "confidence": "Moderate",
+    "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
+    "projected_score": {
+      "away": 39.95130655791746,
+      "home": 65.04869344208254
+    },
+    "reasons": [
+      "Season record",
+      "OPS",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP",
+      "Recent record"
+    ],
+    "learning_features": {
+      "projected_run_margin": 25.097386884165076,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.5,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/141.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/111.svg",
+    "actual": {
+      "winner": "Toronto Blue Jays",
+      "away_score": 6,
+      "home_score": 0
+    },
+    "result": "loss",
+    "graded_at": "2026-07-26T02:07:15.274619Z"
+  },
+  {
+    "id": "07885c9f-abf3-4014-84d9-d515630d7f31",
+    "created_at": "2026-07-26T02:06:39.986221+00:00",
+    "game_pk": 823197,
+    "official_date": "2026-07-25",
+    "away_team": "Los Angeles Angels",
+    "home_team": "San Francisco Giants",
+    "winner": "San Francisco Giants",
+    "away_probability": 34.03,
+    "home_probability": 65.97,
+    "confidence": "High",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 30.867579665407273,
+      "home": 74.13242033459274
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Team ERA",
+      "Recent record",
+      "Recent run differential"
+    ],
+    "learning_features": {
+      "projected_run_margin": 43.26484066918546,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": 0.84,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/108.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/137.svg",
+    "actual": {
+      "winner": "San Francisco Giants",
+      "away_score": 2,
+      "home_score": 9
+    },
+    "result": "win",
+    "graded_at": "2026-07-26T02:07:15.274625Z"
+  },
+  {
+    "id": "6de82d19-b8ab-443c-95da-47d2c95efe10",
+    "created_at": "2026-07-26T02:06:37.302044+00:00",
+    "game_pk": 822704,
+    "official_date": "2026-07-25",
+    "away_team": "Arizona Diamondbacks",
+    "home_team": "Washington Nationals",
+    "winner": "Washington Nationals",
+    "away_probability": 43.45,
+    "home_probability": 56.55,
+    "confidence": "Low",
+    "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
+    "projected_score": {
+      "away": 43.36207037433299,
+      "home": 60.11709629233368
+    },
+    "reasons": [
+      "OPS",
+      "Runs per game",
+      "Starter ERA",
+      "Starter WHIP",
+      "Starter strikeout rate",
+      "Starter walk rate"
+    ],
+    "learning_features": {
+      "projected_run_margin": 16.75502591800069,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.37,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/109.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/120.svg",
+    "actual": {
+      "winner": "Washington Nationals",
+      "away_score": 3,
+      "home_score": 5
+    },
+    "result": "win",
+    "graded_at": "2026-07-26T02:07:15.274631Z"
+  },
+  {
+    "id": "a5f0c58a-84ad-496c-b753-41467be6133d",
+    "created_at": "2026-07-26T02:06:34.487345+00:00",
+    "game_pk": 824244,
+    "official_date": "2026-07-25",
+    "away_team": "Kansas City Royals",
+    "home_team": "Detroit Tigers",
+    "winner": "Detroit Tigers",
+    "away_probability": 34.71,
+    "home_probability": 65.29,
+    "confidence": "High",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 32.87909685155788,
+      "home": 72.12090314844211
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "Team ERA",
+      "Team WHIP",
+      "Starter ERA",
+      "Starter WHIP"
+    ],
+    "learning_features": {
+      "projected_run_margin": 39.24180629688423,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.11,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/118.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/116.svg",
+    "actual": {
+      "winner": "Kansas City Royals",
+      "away_score": 3,
+      "home_score": 2
+    },
+    "result": "loss",
+    "graded_at": "2026-07-26T02:07:15.274636Z"
+  },
+  {
+    "id": "24189f72-9f9c-4699-ab1a-9b94f10f3ae2",
+    "created_at": "2026-07-25T02:03:06.975325+00:00",
+    "game_pk": 823196,
+    "official_date": "2026-07-24",
+    "away_team": "Los Angeles Angels",
+    "home_team": "San Francisco Giants",
+    "winner": "San Francisco Giants",
+    "away_probability": 34.87,
+    "home_probability": 65.13,
+    "confidence": "High",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 34.24214723318327,
+      "home": 70.44535276681674
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Recent run differential",
+      "Starter ERA",
+      "Starter WHIP"
+    ],
+    "learning_features": {
+      "projected_run_margin": 36.20320553363347,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.43,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/108.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/137.svg",
+    "actual": {
+      "winner": "San Francisco Giants",
+      "away_score": 6,
+      "home_score": 7
+    },
+    "result": "win",
+    "graded_at": "2026-07-25T06:03:48.132197Z"
+  },
+  {
+    "id": "7f40d294-0975-479f-86ad-ed9b947b0998",
+    "created_at": "2026-07-25T02:03:04.543035+00:00",
+    "game_pk": 823031,
+    "official_date": "2026-07-24",
+    "away_team": "Cincinnati Reds",
+    "home_team": "St. Louis Cardinals",
+    "winner": "St. Louis Cardinals",
+    "away_probability": 43.18,
+    "home_probability": 56.82,
+    "confidence": "Low",
+    "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
+    "projected_score": {
+      "away": 43.554586765209905,
+      "home": 61.445413234790095
+    },
+    "reasons": [
+      "Season record",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP",
+      "Starter ERA",
+      "Starter WHIP"
+    ],
+    "learning_features": {
+      "projected_run_margin": 17.89082646958019,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": 0.42,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/113.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/138.svg",
+    "actual": {
+      "winner": "Cincinnati Reds",
+      "away_score": 4,
+      "home_score": 2
+    },
+    "result": "loss",
+    "graded_at": "2026-07-25T04:07:22.176675Z"
+  },
+  {
+    "id": "339bd223-88a2-42f1-9105-d14a52a8bd51",
+    "created_at": "2026-07-25T02:03:01.818757+00:00",
+    "game_pk": 823680,
+    "official_date": "2026-07-24",
+    "away_team": "Athletics",
+    "home_team": "Minnesota Twins",
+    "winner": "Minnesota Twins",
+    "away_probability": 36.85,
+    "home_probability": 63.15,
+    "confidence": "Moderate",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 36.262372722770905,
+      "home": 68.7376272772291
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP",
+      "Recent record"
+    ],
+    "learning_features": {
+      "projected_run_margin": 32.47525455445819,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.01,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/133.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/142.svg",
+    "actual": {
+      "winner": "Athletics",
+      "away_score": 2,
+      "home_score": 0
+    },
+    "result": "loss",
+    "graded_at": "2026-07-25T04:07:22.176689Z"
+  },
+  {
+    "id": "1d98e6d5-2f40-40d1-a4ca-d82383060c9c",
+    "created_at": "2026-07-25T02:02:59.184638+00:00",
+    "game_pk": 822872,
+    "official_date": "2026-07-24",
+    "away_team": "Seattle Mariners",
+    "home_team": "Texas Rangers",
+    "winner": "Seattle Mariners",
+    "away_probability": 53.49,
+    "home_probability": 46.51,
+    "confidence": "Low",
+    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "projected_score": {
+      "away": 57.98750504547532,
+      "home": 47.01249495452468
+    },
+    "reasons": [
+      "Team ERA",
+      "Team WHIP",
+      "Starter ERA",
+      "Starter WHIP",
+      "Starter walk rate",
+      "Starter opponent average"
+    ],
+    "learning_features": {
+      "projected_run_margin": 10.975010090950633,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.95,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/136.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/140.svg",
+    "actual": {
+      "winner": "Texas Rangers",
+      "away_score": 4,
+      "home_score": 5
+    },
+    "result": "loss",
+    "graded_at": "2026-07-25T04:07:22.176695Z"
+  },
+  {
+    "id": "426df3ce-5182-4870-b0a3-3dd41624ef58",
+    "created_at": "2026-07-25T02:02:56.765332+00:00",
+    "game_pk": 824573,
+    "official_date": "2026-07-24",
+    "away_team": "Houston Astros",
+    "home_team": "Chicago White Sox",
+    "winner": "Chicago White Sox",
+    "away_probability": 35.75,
+    "home_probability": 64.25,
+    "confidence": "Moderate",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 35.05393278595553,
+      "home": 69.94606721404446
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP",
+      "Recent record"
+    ],
+    "learning_features": {
+      "projected_run_margin": 34.89213442808893,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.13,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/117.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/145.svg",
+    "actual": {
+      "winner": "Houston Astros",
+      "away_score": 9,
+      "home_score": 5
+    },
+    "result": "loss",
+    "graded_at": "2026-07-25T04:07:22.176700Z"
+  },
+  {
+    "id": "802f0d72-3900-45b2-aa0d-ae0255207802",
+    "created_at": "2026-07-25T02:02:54.206191+00:00",
+    "game_pk": 824733,
+    "official_date": "2026-07-24",
+    "away_team": "Toronto Blue Jays",
+    "home_team": "Boston Red Sox",
+    "winner": "Boston Red Sox",
+    "away_probability": 35.44,
+    "home_probability": 64.56,
+    "confidence": "Moderate",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 34.577037172322534,
+      "home": 68.79796282767747
+    },
+    "reasons": [
+      "Season record",
+      "OPS",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP",
+      "Recent record"
+    ],
+    "learning_features": {
+      "projected_run_margin": 34.22092565535493,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.49,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/141.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/111.svg",
+    "actual": {
+      "winner": "Boston Red Sox",
+      "away_score": 4,
+      "home_score": 6
+    },
+    "result": "win",
+    "graded_at": "2026-07-25T04:07:22.176706Z"
+  },
+  {
+    "id": "c3d82b70-1939-41f1-84c1-5def46e004ae",
+    "created_at": "2026-07-25T02:02:51.402985+00:00",
+    "game_pk": 823843,
+    "official_date": "2026-07-24",
+    "away_team": "San Diego Padres",
+    "home_team": "Miami Marlins",
+    "winner": "Miami Marlins",
+    "away_probability": 38.2,
+    "home_probability": 61.8,
+    "confidence": "Moderate",
+    "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
+    "projected_score": {
+      "away": 39.599773559245996,
+      "home": 65.02522644075398
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP"
+    ],
+    "learning_features": {
+      "projected_run_margin": 25.425452881507987,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -1.47,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/135.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/146.svg",
+    "actual": {
+      "winner": "San Diego Padres",
+      "away_score": 4,
+      "home_score": 2
+    },
+    "result": "loss",
+    "graded_at": "2026-07-25T04:07:22.176712Z"
+  },
+  {
+    "id": "f268c798-eda1-492a-8085-5fef1ddf806b",
+    "created_at": "2026-07-25T02:02:48.622844+00:00",
+    "game_pk": 822952,
+    "official_date": "2026-07-24",
+    "away_team": "Cleveland Guardians",
+    "home_team": "Tampa Bay Rays",
+    "winner": "Tampa Bay Rays",
+    "away_probability": 36.46,
+    "home_probability": 63.54,
+    "confidence": "Moderate",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 36.253939791920736,
+      "home": 68.74606020807927
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Team WHIP",
+      "Starter ERA"
+    ],
+    "learning_features": {
+      "projected_run_margin": 32.492120416158535,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.39,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": false
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/114.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/139.svg",
+    "actual": {
+      "winner": "Tampa Bay Rays",
+      "away_score": 3,
+      "home_score": 11
+    },
+    "result": "win",
+    "graded_at": "2026-07-25T02:03:07.116546Z"
+  },
+  {
+    "id": "67bdd146-5416-4e33-9b5d-3bc2da0b429e",
+    "created_at": "2026-07-25T02:02:45.681471+00:00",
+    "game_pk": 823601,
+    "official_date": "2026-07-24",
+    "away_team": "Los Angeles Dodgers",
+    "home_team": "New York Mets",
+    "winner": "Los Angeles Dodgers",
+    "away_probability": 66.79,
+    "home_probability": 33.21,
+    "confidence": "High",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 71.80925392963252,
+      "home": 33.19074607036748
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP"
+    ],
+    "learning_features": {
+      "projected_run_margin": 38.61850785926504,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": 1.16,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/119.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/121.svg",
+    "actual": {
+      "winner": "Los Angeles Dodgers",
+      "away_score": 4,
+      "home_score": 2
+    },
+    "result": "win",
+    "graded_at": "2026-07-25T02:03:07.116557Z"
+  },
+  {
+    "id": "dc65a142-12bf-4615-9fe6-dbf8bebe0b3e",
+    "created_at": "2026-07-25T02:02:42.687608+00:00",
+    "game_pk": 824812,
+    "official_date": "2026-07-24",
+    "away_team": "Atlanta Braves",
+    "home_team": "Baltimore Orioles",
+    "winner": "Atlanta Braves",
+    "away_probability": 50.87,
+    "home_probability": 49.13,
+    "confidence": "Low",
+    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "projected_score": {
+      "away": 52.481481323125394,
+      "home": 52.518518676874606
+    },
+    "reasons": [
+      "Recent record",
+      "Recent run differential",
+      "Starter WHIP",
+      "Starter walk rate",
+      "Bullpen availability",
+      "Home-field advantage"
+    ],
+    "learning_features": {
+      "projected_run_margin": 0.0370373537492128,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": true,
+      "lineup_adjustment": 0.88,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/144.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/110.svg",
+    "actual": {
+      "winner": "Atlanta Braves",
+      "away_score": 7,
+      "home_score": 6
+    },
+    "result": "win",
+    "graded_at": "2026-07-25T04:07:22.176718Z"
+  },
+  {
+    "id": "f6a40ce0-cde4-454e-af5a-f417673f6101",
+    "created_at": "2026-07-25T02:02:39.592145+00:00",
+    "game_pk": 823434,
+    "official_date": "2026-07-24",
+    "away_team": "New York Yankees",
+    "home_team": "Philadelphia Phillies",
+    "winner": "New York Yankees",
+    "away_probability": 61.4,
+    "home_probability": 38.6,
+    "confidence": "Moderate",
+    "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
+    "projected_score": {
+      "away": 66.7998642426551,
+      "home": 38.200135757344896
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "OPS",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP"
+    ],
+    "learning_features": {
+      "projected_run_margin": 28.59972848531021,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.18,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/147.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/143.svg",
+    "actual": {
+      "winner": "New York Yankees",
+      "away_score": 1,
+      "home_score": 0
+    },
+    "result": "win",
+    "graded_at": "2026-07-25T02:03:07.116564Z"
+  },
+  {
+    "id": "891ac34a-d36f-4e3b-b683-e0e5ce0f4335",
+    "created_at": "2026-07-25T02:02:36.508941+00:00",
+    "game_pk": 822707,
+    "official_date": "2026-07-24",
+    "away_team": "Arizona Diamondbacks",
+    "home_team": "Washington Nationals",
+    "winner": "Arizona Diamondbacks",
+    "away_probability": 55.38,
+    "home_probability": 44.62,
+    "confidence": "Low",
+    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "projected_score": {
+      "away": 58.94039707455671,
+      "home": 44.351269592109965
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "Team ERA",
+      "Team WHIP",
+      "Recent record",
+      "Recent run differential"
+    ],
+    "learning_features": {
+      "projected_run_margin": 14.589127482446742,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": -0.62,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/109.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/120.svg",
+    "actual": {
+      "winner": "Arizona Diamondbacks",
+      "away_score": 3,
+      "home_score": 2
+    },
+    "result": "win",
+    "graded_at": "2026-07-25T02:03:07.116569Z"
+  },
+  {
+    "id": "af478479-6145-4e25-8b78-34c12f68cdc9",
+    "created_at": "2026-07-25T02:02:33.628565+00:00",
+    "game_pk": 823352,
+    "official_date": "2026-07-24",
+    "away_team": "Chicago Cubs",
+    "home_team": "Pittsburgh Pirates",
+    "winner": "Pittsburgh Pirates",
+    "away_probability": 46.56,
+    "home_probability": 53.44,
+    "confidence": "Low",
+    "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
+    "projected_score": {
+      "away": 48.35604436747602,
+      "home": 56.64395563252398
+    },
+    "reasons": [
+      "OPS",
+      "Runs per game",
+      "Starter WHIP",
+      "Starter strikeout rate",
+      "Starter opponent average",
+      "Bullpen ERA"
+    ],
+    "learning_features": {
+      "projected_run_margin": 8.287911265047967,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": true,
+      "lineup_adjustment": -0.09,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/112.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/134.svg",
+    "actual": {
+      "winner": "Chicago Cubs",
+      "away_score": 3,
+      "home_score": 2
+    },
+    "result": "loss",
+    "graded_at": "2026-07-25T02:03:07.116574Z"
+  },
+  {
+    "id": "db517631-62cc-4781-87b4-8a116dafb539",
+    "created_at": "2026-07-25T02:02:30.397342+00:00",
+    "game_pk": 824248,
+    "official_date": "2026-07-24",
+    "away_team": "Kansas City Royals",
+    "home_team": "Detroit Tigers",
+    "winner": "Detroit Tigers",
+    "away_probability": 33.94,
+    "home_probability": 66.06,
+    "confidence": "High",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 32.2450687916095,
+      "home": 71.71326454172383
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "Team ERA",
+      "Team WHIP",
+      "Recent record",
+      "Starter ERA"
+    ],
+    "learning_features": {
+      "projected_run_margin": 39.46819575011433,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": 0.08,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/118.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/116.svg",
+    "actual": {
+      "winner": "Detroit Tigers",
+      "away_score": 1,
+      "home_score": 2
+    },
+    "result": "win",
+    "graded_at": "2026-07-25T02:03:07.116579Z"
+  },
+  {
+    "id": "1ba5f902-b41d-4254-bb37-0a933a168621",
+    "created_at": "2026-07-25T02:02:27.452020+00:00",
+    "game_pk": 823759,
+    "official_date": "2026-07-24",
+    "away_team": "Colorado Rockies",
+    "home_team": "Milwaukee Brewers",
+    "winner": "Milwaukee Brewers",
+    "away_probability": 31.76,
+    "home_probability": 68.24,
+    "confidence": "High",
+    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "projected_score": {
+      "away": 29.77931653706265,
+      "home": 75.22068346293734
+    },
+    "reasons": [
+      "Season record",
+      "Home/away performance",
+      "Runs per game",
+      "Team ERA",
+      "Team WHIP",
+      "Recent record"
+    ],
+    "learning_features": {
+      "projected_run_margin": 45.441366925874696,
+      "starting_pitcher_edge": false,
+      "bullpen_edge": false,
+      "lineup_adjustment": 0.15,
+      "injury_adjustment": 0.0,
+      "sportsbook_value": true
+    },
+    "away_logo": "https://www.mlbstatic.com/team-logos/115.svg",
+    "home_logo": "https://www.mlbstatic.com/team-logos/158.svg",
+    "actual": {
+      "winner": "Colorado Rockies",
+      "away_score": 5,
+      "home_score": 2
+    },
+    "result": "loss",
+    "graded_at": "2026-07-25T02:03:07.116583Z"
+  },
+  {
+    "id": "937d1e9d-5f92-4859-8315-b9256dcf547c",
+    "created_at": "2026-07-24T01:59:09.296155+00:00",
     "game_pk": 824247,
     "official_date": "2026-07-23",
     "away_team": "Kansas City Royals",
     "home_team": "Detroit Tigers",
     "winner": "Detroit Tigers",
-    "away_probability": 34.96,
-    "home_probability": 65.04,
-    "confidence": "High",
+    "away_probability": 35.58,
+    "home_probability": 64.42,
+    "confidence": "Moderate",
     "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
     "projected_score": {
-      "away": 33.39514292479418,
-      "home": 69.97985707520581
+      "away": 34.85074348339823,
+      "home": 68.83675651660177
     },
     "reasons": [
       "Season record",
@@ -24,101 +1284,122 @@
       "Recent run differential"
     ],
     "learning_features": {
-      "projected_run_margin": 36.584714150411635,
+      "projected_run_margin": 33.986013033203534,
       "starting_pitcher_edge": false,
       "bullpen_edge": false,
-      "lineup_adjustment": 0.0,
+      "lineup_adjustment": -0.49,
       "injury_adjustment": 0.0,
       "sportsbook_value": true
     },
     "away_logo": "https://www.mlbstatic.com/team-logos/118.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/116.svg"
+    "home_logo": "https://www.mlbstatic.com/team-logos/116.svg",
+    "actual": {
+      "winner": "Detroit Tigers",
+      "away_score": 3,
+      "home_score": 4
+    },
+    "result": "win",
+    "graded_at": "2026-07-24T01:59:09.451139Z"
   },
   {
-    "id": "ee2e3402-b022-4936-8454-f3d27f6361b4",
-    "created_at": "2026-07-23T05:55:51.546009+00:00",
+    "id": "6da975fc-9277-4024-8ebd-ea32d1de3be7",
+    "created_at": "2026-07-24T01:59:06.346859+00:00",
     "game_pk": 823042,
     "official_date": "2026-07-23",
     "away_team": "Arizona Diamondbacks",
     "home_team": "St. Louis Cardinals",
-    "winner": "St. Louis Cardinals",
-    "away_probability": 49.31,
-    "home_probability": 50.69,
+    "winner": "Arizona Diamondbacks",
+    "away_probability": 51.77,
+    "home_probability": 48.23,
     "confidence": "Low",
     "confidence_stars": "\u2605\u2605\u2606\u2606\u2606",
     "projected_score": {
-      "away": 51.651752035297264,
-      "home": 53.348247964702736
+      "away": 53.60674678735445,
+      "home": 51.39325321264555
     },
     "reasons": [
-      "Home/away performance",
-      "Starter ERA",
-      "Starter WHIP",
-      "Starter walk rate",
-      "Starter opponent average",
-      "Home-field advantage"
+      "Season record",
+      "Team WHIP",
+      "Recent record",
+      "Recent run differential",
+      "Starter strikeout rate",
+      "Bullpen availability"
     ],
     "learning_features": {
-      "projected_run_margin": 1.6964959294054722,
+      "projected_run_margin": 2.213493574708906,
       "starting_pitcher_edge": false,
-      "bullpen_edge": false,
-      "lineup_adjustment": 0.0,
+      "bullpen_edge": true,
+      "lineup_adjustment": 0.87,
       "injury_adjustment": 0.0,
-      "sportsbook_value": true
+      "sportsbook_value": false
     },
     "away_logo": "https://www.mlbstatic.com/team-logos/109.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/138.svg"
+    "home_logo": "https://www.mlbstatic.com/team-logos/138.svg",
+    "actual": {
+      "winner": "Arizona Diamondbacks",
+      "away_score": 10,
+      "home_score": 6
+    },
+    "result": "win",
+    "graded_at": "2026-07-24T01:59:09.451152Z"
   },
   {
-    "id": "45e64d77-135d-4631-9f78-52de24ad053b",
-    "created_at": "2026-07-23T05:55:48.747850+00:00",
+    "id": "6bc9d88b-80ad-4967-9626-45629e522af1",
+    "created_at": "2026-07-24T01:59:03.134251+00:00",
     "game_pk": 822785,
     "official_date": "2026-07-23",
     "away_team": "Tampa Bay Rays",
     "home_team": "Toronto Blue Jays",
     "winner": "Tampa Bay Rays",
-    "away_probability": 68.26,
-    "home_probability": 31.74,
-    "confidence": "High",
-    "confidence_stars": "\u2605\u2605\u2605\u2605\u2606",
+    "away_probability": 62.48,
+    "home_probability": 37.52,
+    "confidence": "Moderate",
+    "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
     "projected_score": {
-      "away": 74.32736458071199,
-      "home": 29.651802085954685
+      "away": 66.7307201109101,
+      "home": 37.685946555756566
     },
     "reasons": [
       "Season record",
-      "Home/away performance",
       "OPS",
       "Runs per game",
       "Team ERA",
-      "Team WHIP"
+      "Team WHIP",
+      "Recent record"
     ],
     "learning_features": {
-      "projected_run_margin": 44.6755624947573,
+      "projected_run_margin": 29.044773555153533,
       "starting_pitcher_edge": false,
       "bullpen_edge": false,
-      "lineup_adjustment": 0.0,
+      "lineup_adjustment": 0.66,
       "injury_adjustment": 0.0,
-      "sportsbook_value": true
+      "sportsbook_value": false
     },
     "away_logo": "https://www.mlbstatic.com/team-logos/139.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/141.svg"
+    "home_logo": "https://www.mlbstatic.com/team-logos/141.svg",
+    "actual": {
+      "winner": "Toronto Blue Jays",
+      "away_score": 1,
+      "home_score": 3
+    },
+    "result": "loss",
+    "graded_at": "2026-07-24T01:59:09.451158Z"
   },
   {
-    "id": "fd2498fa-e271-4648-91d3-414dd5a7a4a4",
-    "created_at": "2026-07-23T05:55:46.462429+00:00",
+    "id": "8843418d-1659-4c5e-b4cc-3a143a9cc580",
+    "created_at": "2026-07-24T01:59:00.200801+00:00",
     "game_pk": 824406,
     "official_date": "2026-07-23",
     "away_team": "Minnesota Twins",
     "home_team": "Cleveland Guardians",
     "winner": "Cleveland Guardians",
-    "away_probability": 39.61,
-    "home_probability": 60.39,
+    "away_probability": 42.48,
+    "home_probability": 57.52,
     "confidence": "Moderate",
     "confidence_stars": "\u2605\u2605\u2605\u2606\u2606",
     "projected_score": {
-      "away": 39.67031190721383,
-      "home": 65.32968809278617
+      "away": 42.4311410474771,
+      "home": 62.56885895252291
     },
     "reasons": [
       "Season record",
@@ -129,31 +1410,38 @@
       "Recent run differential"
     ],
     "learning_features": {
-      "projected_run_margin": 25.65937618557234,
+      "projected_run_margin": 20.13771790504581,
       "starting_pitcher_edge": false,
       "bullpen_edge": false,
-      "lineup_adjustment": 0.0,
+      "lineup_adjustment": 0.63,
       "injury_adjustment": 0.0,
-      "sportsbook_value": true
+      "sportsbook_value": false
     },
     "away_logo": "https://www.mlbstatic.com/team-logos/142.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/114.svg"
+    "home_logo": "https://www.mlbstatic.com/team-logos/114.svg",
+    "actual": {
+      "winner": "Minnesota Twins",
+      "away_score": 3,
+      "home_score": 1
+    },
+    "result": "loss",
+    "graded_at": "2026-07-24T01:59:09.451163Z"
   },
   {
-    "id": "f9bd4630-8a04-4793-b05c-83d1af555091",
-    "created_at": "2026-07-23T05:55:44.174518+00:00",
+    "id": "afdc66b9-b669-435b-9b53-9fe19a09f215",
+    "created_at": "2026-07-24T01:58:56.728409+00:00",
     "game_pk": 824893,
     "official_date": "2026-07-23",
     "away_team": "San Diego Padres",
     "home_team": "Atlanta Braves",
     "winner": "Atlanta Braves",
-    "away_probability": 26.4,
-    "home_probability": 73.6,
+    "away_probability": 28.66,
+    "home_probability": 71.34,
     "confidence": "High",
     "confidence_stars": "\u2605\u2605\u2605\u2605\u2605",
     "projected_score": {
-      "away": 23.349499713839016,
-      "home": 81.65050028616098
+      "away": 27.01620913892331,
+      "home": 77.7337908610767
     },
     "reasons": [
       "Season record",
@@ -164,15 +1452,22 @@
       "Team WHIP"
     ],
     "learning_features": {
-      "projected_run_margin": 58.30100057232196,
+      "projected_run_margin": 50.71758172215339,
       "starting_pitcher_edge": false,
       "bullpen_edge": false,
-      "lineup_adjustment": 0.0,
+      "lineup_adjustment": -0.76,
       "injury_adjustment": 0.0,
-      "sportsbook_value": true
+      "sportsbook_value": false
     },
     "away_logo": "https://www.mlbstatic.com/team-logos/135.svg",
-    "home_logo": "https://www.mlbstatic.com/team-logos/144.svg"
+    "home_logo": "https://www.mlbstatic.com/team-logos/144.svg",
+    "actual": {
+      "winner": "Atlanta Braves",
+      "away_score": 5,
+      "home_score": 6
+    },
+    "result": "win",
+    "graded_at": "2026-07-24T01:59:09.451167Z"
   },
   {
     "id": "600bb17d-2131-462c-9802-817b8672ab44",
