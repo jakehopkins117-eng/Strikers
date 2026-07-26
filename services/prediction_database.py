@@ -166,6 +166,8 @@ def save_prediction(payload: dict[str, Any], betting: dict[str, Any] | None = No
         "away_pitcher": payload.get("away_pitcher", {}),
         "home_pitcher": payload.get("home_pitcher", {}),
         "factors": intelligence.get("factors", []),
+        "feature_engineering": payload.get("feature_engineering", {}),
+        "prediction_adjustments": payload.get("prediction_adjustments", {}),
     }
     values = (
         created_at, away_team, home_team, prediction["winner"],

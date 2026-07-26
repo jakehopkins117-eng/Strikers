@@ -45,6 +45,7 @@ from services.prediction_database import (
     summary as database_summary,
 )
 from services.ml_foundation import model_status, second_opinion
+from services.feature_engineering import build_feature_snapshot
 from services.model_learning import analyze_history, apply_learning_adjustment, learning_status
 from services.odds import get_matchup_odds, odds_status
 from services.bet_score import build_sportsbook_intelligence
@@ -648,6 +649,7 @@ def _run_prediction(
         "lineup_intelligence": lineup_intelligence,
         "injury_intelligence": injury_intelligence,
     }
+    payload["feature_engineering"] = build_feature_snapshot(payload)
     adjustments = apply_lineup_injury_adjustment(prediction, matchup, lineup_intelligence, injury_intelligence)
     learning_adjustment = apply_learning_adjustment(prediction, matchup)
     payload["prediction_adjustments"] = adjustments

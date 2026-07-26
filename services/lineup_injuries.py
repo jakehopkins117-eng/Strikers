@@ -11,7 +11,7 @@ import requests
 
 BASE = "https://statsapi.mlb.com/api/v1"
 SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": "Strikers/3.4"})
+SESSION.headers.update({"User-Agent": "Strikers/15.1"})
 
 
 def _get(path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -42,12 +42,19 @@ def _player_season_ops(player_id: int, season: int) -> float:
 
 
 def _lineup_side(boxscore: dict[str, Any], side: str, season: int) -> dict[str, Any]:
+    """Build a lineup score that gives more influence to the top of the order."""
     team_data = boxscore.get("teams", {}).get(side, {})
     players = team_data.get("players", {})
     batting_order = team_data.get("battingOrder", []) or []
     lineup: list[dict[str, Any]] = []
+    weighted_total = 0.0
+    weight_total = 0.0
     ops_values: list[float] = []
-    for raw_id in batting_order[:9]:
+    top_order_values: list[float] = []
+    # Approximate plate-appearance share by batting-order slot.
+    slot_weights = [1.18, 1.14, 1.11, 1.08, 1.03, 0.98, 0.93, 0.88, 0.84]
+
+    for slot, raw_id in enumerate(batting_order[:9]):
         player = players.get(f"ID{raw_id}", {})
         person = player.get("person", {})
         stats = player.get("seasonStats", {}).get("batting", {})
@@ -57,32 +64,52 @@ def _lineup_side(boxscore: dict[str, Any], side: str, season: int) -> dict[str, 
             ops = 0.0
         if ops <= 0 and person.get("id"):
             ops = _player_season_ops(int(person["id"]), season)
+
+        weight = slot_weights[slot]
         if ops > 0:
             ops_values.append(ops)
+            weighted_total += ops * weight
+            weight_total += weight
+            if slot < 4:
+                top_order_values.append(ops)
+
         lineup.append({
             "player_id": person.get("id", raw_id),
             "name": person.get("fullName", "Unknown Player"),
             "position": player.get("position", {}).get("abbreviation", ""),
+            "batting_order": slot + 1,
             "ops": round(ops, 3) if ops else None,
         })
+
     confirmed = len(lineup) >= 9
+    completeness = min(1.0, len(ops_values) / 9)
     average_ops = sum(ops_values) / len(ops_values) if ops_values else 0.0
-    # .700 OPS maps near 70; clamp to avoid false precision.
-    strength = max(45.0, min(100.0, average_ops * 100)) if average_ops else 65.0
+    weighted_ops = weighted_total / weight_total if weight_total else 0.0
+    top_order_ops = sum(top_order_values) / len(top_order_values) if top_order_values else 0.0
+
+    # Blend weighted lineup production with the top four hitters. Missing data
+    # shrinks toward a neutral .700 OPS rather than creating a false edge.
+    observed_ops = (weighted_ops * 0.78 + top_order_ops * 0.22) if weighted_ops else 0.0
+    regressed_ops = (observed_ops * completeness) + (0.700 * (1.0 - completeness))
+    strength = max(45.0, min(100.0, regressed_ops * 100))
+
     return {
         "status": "Confirmed" if confirmed else "Projected / unavailable",
         "confirmed": confirmed,
         "strength_score": round(strength, 1),
         "average_ops": round(average_ops, 3) if average_ops else None,
+        "weighted_ops": round(weighted_ops, 3) if weighted_ops else None,
+        "top_order_ops": round(top_order_ops, 3) if top_order_ops else None,
+        "completeness": round(completeness, 2),
         "batting_order": lineup,
-        "note": "Official MLB batting order." if confirmed else "MLB has not published a complete batting order yet.",
+        "note": "Official MLB batting order with order-weighted OPS." if confirmed else "MLB has not published a complete batting order yet; missing values are regressed toward league-neutral production.",
     }
 
 
 def get_lineup_intelligence(away_id: int, home_id: int, game_pk: int | None = None, official_date: str | None = None) -> dict[str, Any]:
     resolved_pk = game_pk or _find_game_pk(away_id, home_id, official_date)
     if not resolved_pk:
-        empty = {"status": "Projected / unavailable", "confirmed": False, "strength_score": 65.0, "average_ops": None, "batting_order": [], "note": "No matching MLB game was found."}
+        empty = {"status": "Projected / unavailable", "confirmed": False, "strength_score": 70.0, "average_ops": None, "weighted_ops": None, "top_order_ops": None, "completeness": 0.0, "batting_order": [], "note": "No matching MLB game was found."}
         return {"game_pk": None, "away": empty, "home": dict(empty), "available": False}
     feed = _get(f".1/game/{resolved_pk}/feed/live".replace(".1/", "/v1.1/"))
     # BASE is /api/v1; v1.1 requires absolute replacement fallback.
@@ -139,9 +166,13 @@ def apply_lineup_injury_adjustment(prediction: dict[str, Any], matchup: dict[str
     away = float(prediction["away_probability"])
     # Lineup differential: at most 3 percentage points.
     lineup_delta = (float(lineup["away"]["strength_score"]) - float(lineup["home"]["strength_score"])) * 0.10
+    away_complete = float(lineup["away"].get("completeness", 0.0) or 0.0)
+    home_complete = float(lineup["home"].get("completeness", 0.0) or 0.0)
+    reliability = min(away_complete, home_complete)
     if not (lineup["away"]["confirmed"] and lineup["home"]["confirmed"]):
-        lineup_delta *= 0.35
-    lineup_delta = max(-3.0, min(3.0, lineup_delta))
+        reliability *= 0.50
+    lineup_delta *= reliability
+    lineup_delta = max(-2.5, min(2.5, lineup_delta))
     injury_delta = float(injuries["home"]["penalty_points"]) - float(injuries["away"]["penalty_points"])
     total_delta = max(-4.0, min(4.0, lineup_delta + injury_delta))
     away = max(20.0, min(80.0, away + total_delta))

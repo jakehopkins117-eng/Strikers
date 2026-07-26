@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 MODEL_PATH = Path(__file__).resolve().parents[1] / "data" / "ml_model.json"
-FEATURES = ["win_pct_gap", "location_gap", "ops_gap", "rpg_gap", "era_gap", "whip_gap", "recent_gap"]
+FEATURES = ["win_pct_gap", "location_gap", "ops_gap", "rpg_gap", "era_gap", "whip_gap", "recent_gap", "starter_quality", "bullpen_health", "lineup_quality", "injury_health"]
 
 
 def _number(source: dict[str, Any], key: str, default: float = 0.0) -> float:
@@ -24,6 +24,7 @@ def _number(source: dict[str, Any], key: str, default: float = 0.0) -> float:
 
 def feature_vector(payload: dict[str, Any]) -> dict[str, float]:
     away, home = payload["away_team"], payload["home_team"]
+    engineered = (payload.get("feature_engineering") or {}).get("normalized", {})
     return {
         "win_pct_gap": _number(home, "win_pct") - _number(away, "win_pct"),
         "location_gap": _number(home, "location_win_pct") - _number(away, "location_win_pct"),
@@ -32,6 +33,10 @@ def feature_vector(payload: dict[str, Any]) -> dict[str, float]:
         "era_gap": _number(away, "era") - _number(home, "era"),
         "whip_gap": _number(away, "whip") - _number(home, "whip"),
         "recent_gap": _number(home, "recent_win_pct") - _number(away, "recent_win_pct"),
+        "starter_quality": _number(engineered, "starter_quality"),
+        "bullpen_health": _number(engineered, "bullpen_health"),
+        "lineup_quality": _number(engineered, "lineup_quality"),
+        "injury_health": _number(engineered, "injury_health"),
     }
 
 
