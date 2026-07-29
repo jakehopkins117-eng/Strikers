@@ -15,7 +15,6 @@ function signed(value: number | null, suffix = ""): string {
 export function SportsbookIntelligence({ result }: Props) {
   const market = result.sportsbook_intelligence;
   if (!market) return null;
-
   if (!market.available) {
     return (
       <article className="panel sportsbook-card sportsbook-unavailable">
@@ -31,7 +30,6 @@ export function SportsbookIntelligence({ result }: Props) {
       </article>
     );
   }
-
   const best = market.best_value;
   return (
     <article className="panel sportsbook-card">
@@ -43,7 +41,6 @@ export function SportsbookIntelligence({ result }: Props) {
         </div>
         <span className="sportsbook-status ready">Live prices</span>
       </div>
-
       {best && (
         <div className={`bet-score-hero recommendation-${best.recommendation.toLowerCase().replaceAll(" ", "-")}`}>
           <div>
@@ -56,9 +53,8 @@ export function SportsbookIntelligence({ result }: Props) {
           <div><span>Market edge</span><strong>{signed(best.edge_points, " pts")}</strong><small>{best.value_label}</small></div>
         </div>
       )}
-
       <div className="sportsbook-side-grid">
-        {market.sides.map((side) => (
+        {market.sides.map((side: NonNullable<PredictionResponse["sportsbook_intelligence"]>["sides"][number]) => (
           <section className="sportsbook-side" key={side.team}>
             <div className="sportsbook-side-title"><div><span>{side.side === "away" ? "Away" : "Home"}</span><h4>{side.team}</h4></div><b>{side.bet_score}/100</b></div>
             <div className="sportsbook-metrics">
@@ -70,7 +66,7 @@ export function SportsbookIntelligence({ result }: Props) {
               <div><span>Books</span><strong>{side.market_depth}</strong></div>
             </div>
             <div className="sportsbook-verdict"><strong>{side.value_label}</strong><span>{side.recommendation}</span></div>
-            <ul>{side.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+            <ul>{side.reasons.map((reason: string) => <li key={reason}>{reason}</li>)}</ul>
           </section>
         ))}
       </div>

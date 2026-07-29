@@ -42,7 +42,7 @@ export function BettingIntelligence({ result }: Props) {
       )}
 
       <div className="value-side-grid">
-        {intelligence.sides.map((side) => (
+        {intelligence.sides.map((side: NonNullable<PredictionResponse["betting_intelligence"]>["sides"][number]) => (
           <div className="value-side" key={side.team}>
             <div className="value-side-title">
               <strong>{side.team}</strong>

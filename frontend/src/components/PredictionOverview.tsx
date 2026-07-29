@@ -43,7 +43,7 @@ export function PredictionOverview({ result, winningProbability }: { result:Pred
     <article className="why-card panel">
       <div className="card-heading"><div><p className="eyebrow">DECISION SUMMARY</p><h3>Why Strikers likes the pick</h3></div><span className="edge-chip">{result.intelligence.edge_points.toFixed(1)} pt edge</span></div>
       <p className="why-summary">{result.intelligence.summary}</p>
-      <div className="reason-list clean-reasons">{result.prediction.reasons.slice(0,5).map((reason,index)=><div className="reason-item" key={reason}><span>{index+1}</span><strong>{reason}</strong></div>)}</div>
+      <div className="reason-list clean-reasons">{result.prediction.reasons.slice(0,5).map((reason: string, index: number)=><div className="reason-item" key={reason}><span>{index+1}</span><strong>{reason}</strong></div>)}</div>
       <div className="bottom-callout"><span>Bottom line</span><strong>{result.intelligence.bottom_line}</strong></div>
     </article>
 

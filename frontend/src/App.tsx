@@ -135,6 +135,51 @@ export type PredictionResponse = {
     totals:{bookmaker:string;side:string;point:number|null;odds:number|null;last_update:string|null}[];
     quota:Record<string,string|number|boolean|null>; disclaimer:string;
   };
+  statcast_intelligence?: {
+    available: boolean;
+    data_quality_score: number;
+    note?: string;
+    away: {
+      lineup: {
+        metrics: {
+          xwoba?: number | null;
+          xslg?: number | null;
+          barrel_pct?: number | null;
+          hard_hit_pct?: number | null;
+          [key: string]: number | string | boolean | null | undefined;
+        };
+      };
+      starter: {
+        metrics: {
+          xera?: number | null;
+          [key: string]: number | string | boolean | null | undefined;
+        };
+      };
+    };
+    home: {
+      lineup: {
+        metrics: {
+          xwoba?: number | null;
+          xslg?: number | null;
+          barrel_pct?: number | null;
+          hard_hit_pct?: number | null;
+          [key: string]: number | string | boolean | null | undefined;
+        };
+      };
+      starter: {
+        metrics: {
+          xera?: number | null;
+          [key: string]: number | string | boolean | null | undefined;
+        };
+      };
+    };
+  };
+  statcast_adjustment?: {
+    applied: boolean;
+    points: number;
+    favored_team?: string | null;
+    status?: string | null;
+  };
   ml_second_opinion?: { available:boolean; status:string; winner:string|null; home_probability:number|null; away_probability:number|null; agreement:boolean|null; message?:string };
   intelligence: {
     headline: string;
