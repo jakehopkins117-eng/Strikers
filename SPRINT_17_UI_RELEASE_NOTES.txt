@@ -1,0 +1,26 @@
+STRIKERS SPRINT 17 — UI/UX OVERHAUL
+
+What changed
+- New premium command-center visual system across the app shell.
+- Redesigned matchup result header with a clearer winner, probability, confidence, projected score, model grade, and risk level.
+- New visible Statcast Intelligence card showing active adjustment, data coverage, xwOBA, xSLG, barrel rate, hard-hit rate, and starter xERA.
+- New decision-summary card with top reasons and a clean bottom-line explanation.
+- Updated navigation, panels, buttons, spacing, responsive behavior, and status badges.
+- Existing backend logic and API behavior are unchanged.
+
+Install
+Copy the frontend folder into your Strikers2 project and replace matching files.
+
+Run
+Backend: python -m uvicorn web_api:app --reload
+Frontend: cd frontend && npm run dev
+
+Verification
+Open Matchup Predictor, run a prediction, and confirm the top result area shows:
+- STATCAST APPLIED or CORE MODEL
+- Statcast Intelligence
+- Prediction impact
+- Quality-of-contact comparison table
+
+Validation
+TypeScript validation passed. The Linux packaging environment could not complete the Vite bundle because the uploaded Windows node_modules folder lacked the Linux optional native binding. On the user computer, run npm install and npm run build if a full local bundle check is desired.

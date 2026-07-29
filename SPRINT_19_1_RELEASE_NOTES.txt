@@ -1,0 +1,24 @@
+STRIKERS SPRINT 19.1 — LIVE PLAYER PROP ODDS
+
+Added:
+- services/prop_odds.py
+- GET /player-props/live
+- GET /player-props/live/status
+- Persistent cache: data/prop_odds_cache.json (created automatically)
+- Live event-level player props from The Odds API
+
+Default markets:
+- Batter hits
+- Batter total bases
+- Batter home runs
+- Batter RBIs
+- Pitcher strikeouts
+- Pitcher outs
+- Pitcher earned runs
+
+Notes:
+- This sprint retrieves and normalizes live prices only.
+- Sprint 19.2 will match these prices to Strikers projections and calculate edge, fair odds, EV and confidence.
+- Cache defaults to 30 minutes to protect API credits.
+- Set PROP_ODDS_CACHE_SECONDS in .env to change cache duration.
+- Set PROP_ODDS_MARKETS in .env to customize requested markets.

@@ -1,0 +1,19 @@
+STRIKERS UI 2.0 — CLARITY OVERHAUL
+
+Changes
+- Groups navigation into Overview, Betting, Research, and Model.
+- Adds Team Analytics to the visible navigation.
+- Adds four compact dashboard quick actions.
+- Creates a dark-first design system with consistent surfaces, borders, spacing, and typography.
+- Makes the top bar sticky for easier navigation.
+- Reduces card height and visual clutter.
+- Improves responsive layouts for desktop, tablet, and mobile.
+- Keeps all current backend endpoints and prediction logic unchanged.
+
+Files changed
+- frontend/src/App.tsx
+- frontend/src/App.css
+- frontend/src/index.css
+
+Testing note
+The TypeScript source modifications were reviewed, but the container could not complete Vite's production build because the uploaded Windows node_modules lacks Linux native bindings. Run npm run dev on the existing Windows installation to verify the visual result.

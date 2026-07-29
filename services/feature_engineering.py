@@ -38,11 +38,18 @@ def build_feature_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
     home_bullpen = payload.get("home_bullpen") or {}
     lineup = payload.get("lineup_intelligence") or {}
     injuries = payload.get("injury_intelligence") or {}
+    statcast = payload.get("statcast_intelligence") or {}
 
     away_lineup = lineup.get("away") or {}
     home_lineup = lineup.get("home") or {}
     away_injuries = injuries.get("away") or {}
     home_injuries = injuries.get("home") or {}
+    away_statcast = statcast.get("away") or {}
+    home_statcast = statcast.get("home") or {}
+    away_sc_lineup = (away_statcast.get("lineup") or {}).get("metrics") or {}
+    home_sc_lineup = (home_statcast.get("lineup") or {}).get("metrics") or {}
+    away_sc_starter = (away_statcast.get("starter") or {}).get("metrics") or {}
+    home_sc_starter = (home_statcast.get("starter") or {}).get("metrics") or {}
 
     raw = {
         "season_win_pct_gap": _number(home, "win_pct") - _number(away, "win_pct"),
@@ -60,6 +67,10 @@ def build_feature_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
         "lineup_strength_gap": _number(home_lineup, "strength_score", 65.0) - _number(away_lineup, "strength_score", 65.0),
         "top_order_ops_gap": _number(home_lineup, "top_order_ops") - _number(away_lineup, "top_order_ops"),
         "injury_penalty_gap": _number(away_injuries, "penalty_points") - _number(home_injuries, "penalty_points"),
+        "statcast_xwoba_gap": _number(home_sc_lineup, "xwoba") - _number(away_sc_lineup, "xwoba"),
+        "statcast_xslg_gap": _number(home_sc_lineup, "xslg") - _number(away_sc_lineup, "xslg"),
+        "statcast_barrel_gap": _number(home_sc_lineup, "barrel_pct") - _number(away_sc_lineup, "barrel_pct"),
+        "statcast_starter_xera_gap": _number(away_sc_starter, "xera") - _number(home_sc_starter, "xera"),
     }
 
     normalized = {
@@ -73,6 +84,9 @@ def build_feature_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
         "bullpen_health": _gap(_number(home_bullpen, "availability_score", 75.0), _number(away_bullpen, "availability_score", 75.0), 40.0),
         "lineup_quality": _gap(_number(home_lineup, "strength_score", 65.0), _number(away_lineup, "strength_score", 65.0), 20.0),
         "injury_health": _gap(_number(away_injuries, "penalty_points"), _number(home_injuries, "penalty_points"), 3.0),
+        "statcast_offense": _gap(_number(home_sc_lineup, "xwoba"), _number(away_sc_lineup, "xwoba"), 0.08),
+        "statcast_power": _gap(_number(home_sc_lineup, "barrel_pct"), _number(away_sc_lineup, "barrel_pct"), 0.08),
+        "statcast_starter": _gap(_number(away_sc_starter, "xera"), _number(home_sc_starter, "xera"), 2.0),
     }
 
     quality_checks = {
@@ -81,6 +95,8 @@ def build_feature_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
         "home_lineup_completeness": _number(home_lineup, "completeness", 0.0),
         "both_starters_available": bool(away_pitcher.get("available") and home_pitcher.get("available")),
         "both_bullpens_available": bool(away_bullpen.get("available") and home_bullpen.get("available")),
+        "statcast_available": bool(statcast.get("available")),
+        "statcast_data_quality": _number(statcast, "data_quality_score", 0.0),
     }
     available_signals = sum(
         [
@@ -93,7 +109,7 @@ def build_feature_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
     )
 
     return {
-        "version": "15.1",
+        "version": "16.3",
         "perspective": "positive values favor the home team",
         "raw": {key: round(value, 4) for key, value in raw.items()},
         "normalized": normalized,

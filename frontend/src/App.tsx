@@ -252,17 +252,38 @@ type HistoryItem = {
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "http://127.0.0.1:8000";
 
-const navItems: { label: Page; icon: string }[] = [
-  { label: "Dashboard", icon: "⌂" },
-  { label: "Live Games", icon: "●" },
-  { label: "Matchup Predictor", icon: "⚾" },
-  { label: "Best Bets", icon: "★" },
-  { label: "Player Props", icon: "◎" },
-  { label: "Power Rankings", icon: "▥" },
-  { label: "Model Performance", icon: "↗" },
-  { label: "Weather Center", icon: "☁" },
-  { label: "Model Lab", icon: "◈" },
-  { label: "Prediction History", icon: "↺" },
+const navGroups: { title: string; items: { label: Page; icon: string }[] }[] = [
+  {
+    title: "Overview",
+    items: [
+      { label: "Dashboard", icon: "⌂" },
+      { label: "Live Games", icon: "●" },
+    ],
+  },
+  {
+    title: "Betting",
+    items: [
+      { label: "Matchup Predictor", icon: "⚾" },
+      { label: "Best Bets", icon: "★" },
+      { label: "Player Props", icon: "◎" },
+    ],
+  },
+  {
+    title: "Research",
+    items: [
+      { label: "Power Rankings", icon: "▥" },
+      { label: "Weather Center", icon: "☁" },
+      { label: "Team Analytics", icon: "◇" },
+    ],
+  },
+  {
+    title: "Model",
+    items: [
+      { label: "Model Performance", icon: "↗" },
+      { label: "Prediction History", icon: "↺" },
+      { label: "Model Lab", icon: "◈" },
+    ],
+  },
 ];
 
 function todayString(): string {
@@ -603,16 +624,23 @@ function App() {
           <button className="sidebar-close" aria-label="Close navigation" type="button" onClick={() => setSidebarOpen(false)}>×</button>
         </div>
 
-        <nav className="nav-list">
-          {navItems.map((item) => (
-            <button
-              type="button"
-              key={item.label}
-              className={`nav-button ${activePage === item.label ? "active" : ""}`}
-              onClick={() => navigate(item.label)}
-            >
-              <span>{item.icon}</span>{item.label}
-            </button>
+        <nav className="nav-list" aria-label="Primary navigation">
+          {navGroups.map((group) => (
+            <section className="nav-group" key={group.title}>
+              <p className="nav-group-title">{group.title}</p>
+              <div className="nav-group-items">
+                {group.items.map((item) => (
+                  <button
+                    type="button"
+                    key={item.label}
+                    className={`nav-button ${activePage === item.label ? "active" : ""}`}
+                    onClick={() => navigate(item.label)}
+                  >
+                    <span>{item.icon}</span><strong>{item.label}</strong>
+                  </button>
+                ))}
+              </div>
+            </section>
           ))}
         </nav>
 
@@ -629,7 +657,7 @@ function App() {
         <header className="topbar">
           <div className="topbar-title"><button className="menu-button" aria-label="Open navigation" type="button" onClick={() => setSidebarOpen(true)}>☰</button><div><p className="eyebrow">STRIKERS COMMAND CENTER</p><h2>{activePage}</h2></div></div>
           <div className="topbar-actions">
-            <span className="season-badge">Strikers v3.5</span>
+            <span className="season-badge">Strikers UI 2.0</span>
             <div className={`api-indicator ${backendOnline ? "online" : ""}`}><span />API</div>
             <button className="profile-button" type="button">JH</button>
           </div>
@@ -694,7 +722,14 @@ function App() {
           </div>
         </section>
 
-        <section className="stats-grid">
+        <section className="quick-actions" aria-label="Quick actions">
+          <button type="button" onClick={() => navigate("Matchup Predictor")}><span>⚾</span><div><strong>Run a Prediction</strong><small>Analyze any matchup</small></div><b>→</b></button>
+          <button type="button" onClick={() => void loadBestBets()}><span>★</span><div><strong>Best Bets</strong><small>Rank today’s value</small></div><b>→</b></button>
+          <button type="button" onClick={() => void loadPlayerProps()}><span>◎</span><div><strong>Player Props</strong><small>Open the props lab</small></div><b>→</b></button>
+          <button type="button" onClick={() => void loadPerformance()}><span>↗</span><div><strong>Performance</strong><small>Accuracy and ROI</small></div><b>→</b></button>
+        </section>
+
+        <section className="stats-grid dashboard-stats">
           <StatCard label="Backend" value={backendOnline ? "Online" : "Offline"} note="FastAPI connection" positive={backendOnline} />
           <StatCard label="Games" value={loadingSchedule ? "…" : `${games.length}`} note={`Scheduled for ${selectedDate}`} />
           <StatCard label="MLB Clubs" value={`${teams.length || 30}`} note="Official team data" />

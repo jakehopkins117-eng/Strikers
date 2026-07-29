@@ -46,8 +46,15 @@ from services.prediction_database import (
 )
 from services.ml_foundation import model_status, second_opinion
 from services.feature_engineering import build_feature_snapshot
+from services.statcast_intelligence import (
+    build_statcast_intelligence,
+    apply_statcast_adjustment,
+    statcast_status,
+)
+from services.statcast_importer import import_statcast_cache
 from services.model_learning import analyze_history, apply_learning_adjustment, learning_status
 from services.odds import get_matchup_odds, odds_status
+from services.prop_odds import get_live_player_props, prop_odds_status
 from services.bet_score import build_sportsbook_intelligence
 from services.lineup_injuries import (
     get_lineup_intelligence, get_injury_intelligence,
@@ -649,10 +656,13 @@ def _run_prediction(
         "lineup_intelligence": lineup_intelligence,
         "injury_intelligence": injury_intelligence,
     }
+    payload["statcast_intelligence"] = build_statcast_intelligence(payload)
     payload["feature_engineering"] = build_feature_snapshot(payload)
     adjustments = apply_lineup_injury_adjustment(prediction, matchup, lineup_intelligence, injury_intelligence)
+    statcast_adjustment = apply_statcast_adjustment(prediction, matchup, payload["statcast_intelligence"])
     learning_adjustment = apply_learning_adjustment(prediction, matchup)
     payload["prediction_adjustments"] = adjustments
+    payload["statcast_adjustment"] = statcast_adjustment
     payload["self_learning_adjustment"] = learning_adjustment
     payload["intelligence"] = build_model_intelligence(payload)
     payload["game_analyst"] = build_game_analyst(payload, adjustments)
@@ -1047,6 +1057,30 @@ def betting_intelligence(request: BettingIntelligenceRequest) -> dict[str, Any]:
     )["betting_intelligence"]
 
 
+@app.get("/statcast/status")
+def statcast_intelligence_status() -> dict[str, Any]:
+    return statcast_status()
+
+
+@app.post("/statcast/import")
+def import_statcast_data(
+    season: int = Query(default=datetime.now().year, ge=2015, le=datetime.now().year),
+    min_pa: int = Query(default=25, ge=1, le=750),
+    min_bbe: int = Query(default=15, ge=1, le=750),
+) -> dict[str, Any]:
+    """Manually refresh the local Statcast cache.
+
+    This endpoint can take a few minutes because it downloads four season-level
+    Baseball Savant leaderboards. Normal prediction requests never trigger it.
+    """
+    try:
+        return import_statcast_cache(season=season, min_pa=min_pa, min_bbe=min_bbe)
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Statcast import failed: {exc}") from exc
+
+
 @app.get("/ml/status")
 def ml_status() -> dict[str, Any]:
     return model_status()
@@ -1068,7 +1102,7 @@ def sportsbook_odds(
 
 @app.get("/dashboard-summary")
 def dashboard_summary() -> dict[str, Any]:
-    return {"database": database_summary(), "ml": model_status(), "odds": odds_status(), "engine": "7.5", "release": "3.5"}
+    return {"database": database_summary(), "ml": model_status(), "odds": odds_status(), "prop_odds": prop_odds_status(), "statcast": statcast_status(), "engine": "7.7", "release": "19.1"}
 
 
 @app.get("/best-bets")
@@ -1372,6 +1406,26 @@ def team_analytics(
         "recent_games": list(reversed(recent[-10:])),
     }
 
+
+
+@app.get("/player-props/live")
+def live_player_props(
+    date: str | None = Query(default=None, description="Optional slate date in YYYY-MM-DD format."),
+    event_id: str | None = Query(default=None, description="Optional The Odds API event id."),
+    force: bool = Query(default=False, description="Bypass the local player-prop cache."),
+    max_events: int = Query(default=15, ge=1, le=30),
+) -> dict[str, Any]:
+    if date:
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail="Date must use YYYY-MM-DD.") from error
+    return get_live_player_props(date=date, event_id=event_id, force=force, max_events=max_events)
+
+
+@app.get("/player-props/live/status")
+def live_player_props_status() -> dict[str, Any]:
+    return prop_odds_status()
 
 
 @app.get("/player-props")

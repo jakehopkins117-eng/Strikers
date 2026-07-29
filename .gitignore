@@ -1,6 +1,34 @@
-
+# Python generated files
 __pycache__/
-*.pyc
+*.py[cod]
+*.class
+
+# Environment variables and secrets
 .env
 .env.*
 !.env.example
+
+# Local databases and generated model data
+data/*.db
+data/prediction_history.json
+data/self_learning_report.json
+data/statcast_players.json
+data/prop_cache.json
+
+# Frontend generated files
+frontend/node_modules/
+frontend/dist/
+node_modules/
+dist/
+
+# Development files
+.vscode/
+.idea/
+
+# Patch backups and rollback folders
+backup/
+rollback/
+
+# Operating system files
+.DS_Store
+Thumbs.db

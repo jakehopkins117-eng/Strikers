@@ -1,0 +1,31 @@
+STRIKERS SPRINT 16.2 — STATCAST IMPORTER
+
+What changed
+- Added a manual Baseball Savant importer powered by pybaseball.
+- Imports hitter expected stats: xwOBA, xBA, and xSLG.
+- Imports hitter contact quality: barrel rate, hard-hit rate, exit velocity, and sweet-spot rate.
+- Imports pitcher expected stats: xERA, xwOBA/xBA/xSLG allowed.
+- Imports pitcher contact allowed: barrel rate, hard-hit rate, and exit velocity.
+- Writes one small local cache: data/statcast_players.json.
+- Preserves the previous cache as data/statcast_players.previous.json.
+- Added POST /statcast/import and retained GET /statcast/status.
+- Added tools/import-statcast.bat to avoid PowerShell execution-policy problems.
+- Added tools/start.bat to start the backend and frontend without PowerShell scripts.
+
+Safety
+- Statcast remains OBSERVE-ONLY in Sprint 16.2.
+- The new metrics are recorded and displayed to the feature layer, but they do not alter picks yet.
+- A failed import does not overwrite the last working cache.
+
+Installation
+1. Copy the patch contents into the Strikers2 project and allow replacement.
+2. Run: python -m pip install -r requirements.txt
+3. Run: tools\import-statcast.bat
+4. Start Strikers and open: http://127.0.0.1:8000/statcast/status
+
+Expected status after import
+- available: true
+- version: 16.2
+- player_count: greater than 0
+- hitter_rows: greater than 0
+- pitcher_rows: greater than 0

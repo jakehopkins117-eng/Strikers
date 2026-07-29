@@ -3,3 +3,4 @@ uvicorn[standard]
 requests
 pydantic
 python-dotenv
+pybaseball>=2.2.7

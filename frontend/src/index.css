@@ -1,3 +1,1 @@
-html { background: #07111f; }
-body { margin: 0; }
-#root { min-height: 100vh; }
+html{background:#060d18;scroll-behavior:smooth}body{margin:0}#root{min-height:100vh}::selection{background:rgba(94,227,155,.28);color:#fff}*{scrollbar-width:thin;scrollbar-color:#26364b #08111e}::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-track{background:#08111e}::-webkit-scrollbar-thumb{background:#26364b;border:2px solid #08111e;border-radius:999px}

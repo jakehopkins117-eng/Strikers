@@ -1,0 +1,31 @@
+STRIKERS SPRINT 16.3 — ACTIVE STATCAST PREDICTIONS
+
+What changed
+- Statcast data now contributes to game probabilities.
+- Uses lineup xwOBA, xSLG, barrel rate, and hard-hit rate.
+- Uses probable starter xERA, xwOBA allowed, barrel rate allowed, and hard-hit rate allowed.
+- Adjustment is quality-weighted and capped at 3.0 probability points.
+- Missing/incomplete Statcast data fails soft and leaves the prediction unchanged.
+- Prediction reasons now include the favored team and Statcast point adjustment.
+- Feature Engineering records Statcast offense, power, and starter signals.
+
+Safety design
+- The existing rules engine remains the baseline.
+- Statcast cannot move a probability by more than 3 points.
+- Tiny edges below 0.15 points are ignored.
+- Lineup metrics are reduced when fewer than nine hitters are matched.
+- Existing self-learning calibration still runs after the Statcast adjustment.
+
+Install
+1. Stop backend and frontend with Ctrl+C.
+2. Copy the contents of this patch into the Strikers2 project folder.
+3. Allow Windows to replace the three existing files.
+4. Start backend: python -m uvicorn web_api:app --reload
+5. Start frontend in another window: cd frontend ; npm run dev
+
+Verification
+- Open http://127.0.0.1:8000/health/status and confirm release 16.3.
+- Generate a prediction after official lineups/probable pitchers are available.
+- In the API response, inspect statcast_adjustment.
+- applied=true means Statcast changed the probability.
+- applied=false means matching data was unavailable or the edge was neutral.

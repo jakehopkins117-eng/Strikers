@@ -1,0 +1,17 @@
+STRIKERS UI 2.0 — INSTALLATION
+
+1. Stop the frontend with Ctrl+C.
+2. Copy the "frontend" folder from this patch into:
+   C:\Users\Jake Hopkins\Desktop\Strikers2
+3. Choose "Replace the files in the destination."
+4. Start the frontend:
+
+   cd "C:\Users\Jake Hopkins\Desktop\Strikers2\frontend"
+   npm run dev
+
+5. Open http://localhost:5173
+
+No backend files are changed. You do not need to reinstall npm packages.
+
+ROLLBACK
+Copy the "frontend" folder inside the rollback folder into Strikers2 and replace the files.
